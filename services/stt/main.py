@@ -56,6 +56,10 @@ asr_wrapper = ASRModelWrapper(
 
 agreement_n = int(os.getenv("LOCAL_AGREEMENT_N", "2"))
 min_chunk_ms = int(os.getenv("MIN_CHUNK_MS", "500"))
+vad_threshold = float(os.getenv("VAD_THRESHOLD", "0.5"))
+hangover_ms = int(os.getenv("HANGOVER_MS", "700"))
+preroll_ms = int(os.getenv("PREROLL_MS", "300"))
+max_len_ms = int(os.getenv("MAX_LEN_MS", "8000"))
 
 # Survive mid-call STT reconnects (gateway auto-reconnect, uvicorn reload):
 # keep SessionState by session_id so utt numbering + unfinalized audio are
@@ -74,7 +78,14 @@ def _get_or_create_session(session_id: str, agreement: int) -> SessionState:
     if session_id in _PERSISTENT_SESSIONS:
         _PERSISTENT_SESSIONS_TS[session_id] = now
         return _PERSISTENT_SESSIONS[session_id]
-    s = SessionState(session_id=session_id, agreement_n=agreement)
+    s = SessionState(
+        session_id=session_id,
+        agreement_n=agreement,
+        vad_threshold=vad_threshold,
+        hangover_ms=hangover_ms,
+        preroll_ms=preroll_ms,
+        max_len_ms=max_len_ms,
+    )
     _PERSISTENT_SESSIONS[session_id] = s
     _PERSISTENT_SESSIONS_TS[session_id] = now
     return s
@@ -99,7 +110,14 @@ async def health():
 @app.websocket("/stream")
 async def websocket_stream(websocket: WebSocket):
     await websocket.accept()
-    session = SessionState(session_id="uninitialized", agreement_n=agreement_n)
+    session = SessionState(
+        session_id="uninitialized",
+        agreement_n=agreement_n,
+        vad_threshold=vad_threshold,
+        hangover_ms=hangover_ms,
+        preroll_ms=preroll_ms,
+        max_len_ms=max_len_ms,
+    )
     session_is_bound = False
 
     try:
@@ -188,7 +206,8 @@ async def websocket_stream(websocket: WebSocket):
                                         asr_wrapper.transcribe,
                                         finalized_segment,
                                         session.src_lang,
-                                        True
+                                        True,
+                                        getattr(session, "stt_model", None)
                                     )
                             finally:
                                 session.asr_busy = False
@@ -206,7 +225,8 @@ async def websocket_stream(websocket: WebSocket):
                                             asr_wrapper.transcribe,
                                             pending,
                                             session.src_lang,
-                                            True
+                                            True,
+                                            getattr(session, "stt_model", None)
                                         )
                                 finally:
                                     session.asr_busy = False
@@ -293,7 +313,8 @@ async def websocket_stream(websocket: WebSocket):
                                             asr_wrapper.transcribe,
                                             partial_audio,
                                             session.src_lang,
-                                            True
+                                            True,
+                                            getattr(session, "stt_model", None)
                                         )
                                 finally:
                                     session.asr_busy = False
@@ -358,6 +379,7 @@ async def websocket_stream(websocket: WebSocket):
                         raw_lang = str(payload.get("srcLang", "ja")).lower().strip()
                         ALLOWED_LANGUAGES = {"ja", "en", "zh", "ko", "es", "fr", "de", "it", "pt", "ru"}
                         session.src_lang = raw_lang if raw_lang in ALLOWED_LANGUAGES else "ja"
+                        session.stt_model = payload.get("sttModel") or payload.get("sttEngine")
 
                         # Validate sampleRate: 8kHz - 48kHz
                         try:
@@ -376,7 +398,7 @@ async def websocket_stream(websocket: WebSocket):
                         except (ValueError, TypeError):
                             pass
 
-                        print(f"[STT] Started session {session.session_id} (srcLang: {session.src_lang}, sampleRate: {session.sample_rate})")
+                        print(f"[STT] Started session {session.session_id} (srcLang: {session.src_lang}, sampleRate: {session.sample_rate}, sttModel: {session.stt_model})")
                     elif msg_type == "session_stop":
                         # Flush any remaining audio without blocking the loop.
                         leftover = session.segmenter.force_finalize()
@@ -384,7 +406,7 @@ async def websocket_stream(websocket: WebSocket):
                             session.asr_busy = True
                             try:
                                 asr_result = await asyncio.to_thread(
-                                    asr_wrapper.transcribe, leftover, session.src_lang, True
+                                    asr_wrapper.transcribe, leftover, session.src_lang, True, getattr(session, "stt_model", None)
                                 )
                             finally:
                                 session.asr_busy = False

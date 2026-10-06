@@ -215,43 +215,48 @@ wss.on('connection', (clientWs: WebSocket) => {
             session.lastSttUttId = Math.max(session.lastSttUttId || 0, sttMsg.uttId);
           }
 
-          // Forward final transcript to client immediately
-          sendJson(clientWs, { ...sttMsg, tFinal });
+          const currentUttId = sttMsg.uttId;
+          const currentText = sttMsg.text || '';
+          const isLowQuality = isLowQualityFinal(currentText);
 
-          if (sttMsg.text && sttMsg.uttId !== undefined) {
-            const currentUttId = sttMsg.uttId;
-            const currentText = sttMsg.text;
-
-            // Echo check (agent mode only): audio captured while our own voice
-            // was playing that heavily overlaps it is speaker echo, not caller
-            // speech. Display it, but never let it eat a turn or cut playback.
-            // Must cover ACTIVE playback (isAgentSpeaking) — not just past
-            // playback (lastAgentSpeechEndAt). The old check missed echoes
-            // like "accounts management." captured mid-greeting because
-            // lastAgentSpeechEndAt wasn't set yet.
-            let isEcho = false;
-            if (session.mode === 'agent' && session.lastAgentText && sttMsg.tCapture) {
-              const nowMs = Date.now();
-              const activePlayback =
-                session.isAgentSpeaking &&
-                sttMsg.tCapture >= (session.agentSpeakingStartedAt || 0) - 1500 &&
-                sttMsg.tCapture <= nowMs + 500;
-              const recentPlayback =
-                !!session.lastAgentSpeechEndAt &&
-                sttMsg.tCapture < session.lastAgentSpeechEndAt &&
-                session.lastAgentSpeechEndAt - sttMsg.tCapture < 30000;
-              if (activePlayback || recentPlayback) {
-                const { ratio, shared } = echoOverlap(currentText, session.lastAgentText);
-                isEcho = shared >= 2 && ratio >= 0.5;
-              }
+          // Echo check (agent mode only): audio captured while our own voice
+          // was playing that heavily overlaps it is speaker echo, not caller
+          // speech. Display it, but never let it eat a turn or cut playback.
+          // Must cover ACTIVE playback (isAgentSpeaking) — not just past
+          // playback (lastAgentSpeechEndAt). The old check missed echoes
+          // like "accounts management." captured mid-greeting because
+          // lastAgentSpeechEndAt wasn't set yet.
+          let isEcho = false;
+          if (session.mode === 'agent' && session.lastAgentText && sttMsg.tCapture) {
+            const nowMs = Date.now();
+            const activePlayback =
+              session.isAgentSpeaking &&
+              sttMsg.tCapture >= (session.agentSpeakingStartedAt || 0) - 1500 &&
+              sttMsg.tCapture <= nowMs + 500;
+            const recentPlayback =
+              !!session.lastAgentSpeechEndAt &&
+              sttMsg.tCapture < session.lastAgentSpeechEndAt &&
+              session.lastAgentSpeechEndAt - sttMsg.tCapture < 30000;
+            if (activePlayback || recentPlayback) {
+              const { ratio, shared } = echoOverlap(currentText, session.lastAgentText);
+              isEcho = shared >= 2 && ratio >= 0.5;
             }
+          }
 
+          // Forward final transcript to client immediately with echo & quality tags
+          sendJson(clientWs, {
+            ...sttMsg,
+            tFinal,
+            ...(isEcho ? { echo: true } : {}),
+            ...(isLowQuality ? { lowConfidence: true } : {}),
+          });
+
+          if (sttMsg.text && currentUttId !== undefined) {
             if (session.mode === 'agent' && !isEcho) {
               // Hallucinated blips ("you", ".", "be 90") must be displayed
               // but must never consume an agent turn or count as auth input.
-              if (isLowQualityFinal(currentText)) {
+              if (isLowQuality) {
                 console.log(`[Gateway] Low-quality final ignored for turn logic: utt ${currentUttId} "${currentText}"`);
-                sendJson(clientWs, { ...sttMsg, tFinal, lowConfidence: true });
               } else {
               const res = await agentClient.turn({
                 sessionId: session.id,
@@ -363,10 +368,9 @@ wss.on('connection', (clientWs: WebSocket) => {
               } // end low-quality guard
             } else if (isEcho) {
               console.log(`[Gateway] Echo suppressed for utterance ${currentUttId} (matches own playback)`);
-              sendJson(clientWs, { ...sttMsg, tFinal, echo: true });
             } else {
-              if (isLowQualityFinal(currentText)) {
-                sendJson(clientWs, { ...sttMsg, tFinal, lowConfidence: true });
+              if (isLowQuality) {
+                // Low quality input skipped for translation
               } else {
               // Asynchronously dispatch translation to stateless MT service
               const res = await mtClient.translate({

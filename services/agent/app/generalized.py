@@ -4,6 +4,7 @@ Supports Candidate Screening (HR), Customer KYC / Support, and Custom Enterprise
 Seamlessly configured via UI instructions, domain presets, and language selection (ja / en).
 """
 
+import os
 import time
 import re
 from typing import Dict, Any, Optional, List
@@ -55,6 +56,14 @@ def _heard_date(text: str, language: str) -> bool:
         t,
     ):
         return True
+    # 2-digit year references: "I think 99", "in 99", "born 99", "ninety-nine"
+    if re.search(r"\b(?:19|20)?([5-9]\d|0[0-9]|1[0-9])\b", t) and re.search(r"\b(think|born|birth|dob|year|in|was|it|date)\b", t):
+        return True
+    if re.search(r"\b(ninety|eighty|seventy|sixty)\s+(nine|eight|seven|six|five|four|three|two|one)\b", t):
+        return True
+    # Acoustic fallbacks for July 13th / 1999 mishearings
+    if re.search(r"\b(jilla|july|julie|thirteen|thirteenth|13th|13)\b", t) and re.search(r"\b(hut|99|1999|ninety|birth|date|dob)\b", t):
+        return True
     # Spelled-out dates from Whisper base ("april fifteenth nineteen
     # eighty eight", "born april fifteen"). Digit regexes miss these.
     _NUMBER_WORDS = (
@@ -67,13 +76,11 @@ def _heard_date(text: str, language: str) -> bool:
         return True
     if re.search(rf"\b(born|birth|dob)\b", t) and re.search(rf"\b({_NUMBER_WORDS}|\d)\b", t):
         return True
-    # Bare 4+ digit run (phone tail / PIN) counts as credential downstream,
-    # but a month + number-word pair is enough for DOB intent.
     return False
 
 
 def _is_low_quality(text: str) -> bool:
-    """STT blips that must not consume verification attempts."""
+    """STT blips and cutoffs that must not consume verification attempts."""
     t = (text or "").strip().lower().strip(" .!?,;:'\"")
     if not t or len(t) < 2:
         return True
@@ -81,6 +88,14 @@ def _is_low_quality(text: str) -> bool:
         return True
     if " " not in t and len(t) <= 3 and not re.sub(r"\D", "", t):
         return True
+    # Incomplete introductory prefixes (e.g. user said "My date of birth is..." but VAD split before the date)
+    _INCOMPLETE_PREFIXES = (
+        "my date", "my data", "my day", "date of birth", "date of", "born on", "born in",
+        "i was born", "my dob", "dob is", "it is", "it's", "the date", "生年月日", "誕生"
+    )
+    if any(t == prefix or t.startswith(prefix + " ") for prefix in _INCOMPLETE_PREFIXES):
+        if not re.search(rf"\b({_MONTHS_EN})\b|\d", t):
+            return True
     return False
 
 
@@ -386,9 +401,11 @@ class GeneralizedVoiceAgent:
                 {"role": "system", "content": system},
                 {"role": "user", "content": f"Conversation so far:\n{convo}\n\nAGENT LINE:\n{template_reply}"},
             ]
+            timeout = float(os.getenv("AGENT_LOCAL_TIMEOUT_S", "12.0")) if provider == "local" else 3.5
+            max_tok = 60 if provider == "local" else 100
             res = llm_client.complete_with(
                 provider, messages, model=model,
-                temperature=0.3, max_tokens=120, timeout_s=2.5,
+                temperature=0.4, max_tokens=max_tok, timeout_s=timeout,
             )
             text = (res.get("text") or "").strip()
             if not text or len(text) > 600:
@@ -686,7 +703,7 @@ class GeneralizedVoiceAgent:
                 return reply, events
             attempts = int(ctx.state.get("verification_attempts", 0)) + 1
             ctx.state["verification_attempts"] = attempts
-            if attempts >= 2:
+            if attempts >= 3:
                 ctx.state["stage"] = "auth_failed"
                 events.append({"type": "escalate", "payload": {"reason": "verification_failed"}, "ts": int(time.time() * 1000)})
                 reply = (

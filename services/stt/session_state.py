@@ -23,7 +23,11 @@ class SessionState:
         session_id: str,
         src_lang: str = "ja",
         sample_rate: int = 16000,
-        agreement_n: int = 2
+        agreement_n: int = 2,
+        vad_threshold: float = 0.5,
+        hangover_ms: int = 700,
+        preroll_ms: int = 300,
+        max_len_ms: int = 8000,
     ):
         self.session_id = session_id
         self.src_lang = src_lang
@@ -31,7 +35,13 @@ class SessionState:
         self.current_utt_id = 1
         self.current_seq = 0
 
-        self.segmenter = Segmenter(sample_rate=sample_rate)
+        self.segmenter = Segmenter(
+            sample_rate=sample_rate,
+            hangover_ms=hangover_ms,
+            preroll_ms=preroll_ms,
+            max_len_ms=max_len_ms,
+            threshold=vad_threshold,
+        )
         self.stabilizer = LocalAgreementStabilizer(agreement_n=agreement_n)
 
         # Buffer for current active utterance (bounded to 30s max to prevent unbounded memory growth)

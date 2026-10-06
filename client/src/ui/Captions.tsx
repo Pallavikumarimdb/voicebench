@@ -9,6 +9,8 @@ export interface CaptionEntry {
   agentText?: string;
   agentNode?: string;
   interrupted?: boolean;
+  /** Gateway or ASR flagged this as a low-confidence / hallucinated transcription */
+  lowConfidence?: boolean;
 }
 
 interface CaptionsProps {
@@ -27,9 +29,14 @@ export const Captions: React.FC<CaptionsProps> = ({ entries }) => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(entry.finalText || entry.partialText || entry.uttId !== 0) && (
-              <div style={{ borderLeft: '2px solid var(--border-strong)', paddingLeft: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)' }}>Caller</div>
-                <div style={{ fontSize: 14, fontStyle: entry.finalText ? 'normal' : 'italic', color: entry.finalText ? 'var(--text)' : 'var(--text-tertiary)' }}>
+              <div style={{ borderLeft: `2px solid ${entry.lowConfidence ? 'var(--danger-border, #f87171)' : 'var(--border-strong)'}`, paddingLeft: 10, opacity: entry.lowConfidence ? 0.55 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)' }}>Caller</span>
+                  {entry.lowConfidence && (
+                    <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--danger-soft, #fee2e2)', color: 'var(--danger, #ef4444)', borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>low confidence</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 14, fontStyle: entry.finalText && !entry.lowConfidence ? 'normal' : 'italic', color: entry.lowConfidence ? 'var(--text-tertiary)' : (entry.finalText ? 'var(--text)' : 'var(--text-tertiary)') }}>
                   {entry.finalText || entry.partialText || 'Listening…'}
                 </div>
               </div>

@@ -33,6 +33,7 @@ export function createSTTConnection(
       srcLang: session.srcLang,
       sampleRate: session.sampleRate,
       startUttId: (session.lastSttUttId || 0) + 1,
+      sttModel: (session.config as any)?.stt?.model,
     };
     ws.send(JSON.stringify(initMsg));
   });

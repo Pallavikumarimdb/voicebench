@@ -108,20 +108,19 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   const BRAIN_DEFAULT_MODEL: Record<BrainProvider, string> = { template: '', local: 'qwen3:1.7b', openai: 'gpt-4o-mini' };
   const [brainProvider, setBrainProvider] = useState<BrainProvider>(() => {
     const saved = localStorage.getItem('voicebench.brain.provider');
-    return saved === 'local' || saved === 'openai' ? saved : 'template';
+    return saved === 'local' || saved === 'openai' || saved === 'template' ? saved : 'local';
   });
   const [brainModel, setBrainModel] = useState(() => localStorage.getItem('voicebench.brain.model') || 'qwen3:1.7b');
   const [brainModelUsed, setBrainModelUsed] = useState<string | null>(null);
 
   // ─── STT ────────────────────────────────────────────────────────────────────
   const STT_MODELS = [
-    { id: 'base',            label: 'base',              hint: 'Fast · CPU-friendly' },
-    { id: 'small',           label: 'small',             hint: 'Balanced speed & accuracy' },
-    { id: 'medium',          label: 'medium',            hint: 'Higher accuracy' },
-    { id: 'large-v2',        label: 'large-v2',          hint: 'Best quality · needs GPU' },
-    { id: 'large-v3-turbo',  label: 'large-v3-turbo',   hint: 'Best quality + speed · needs GPU' },
+    { id: 'sherpa:sense-voice',   label: 'Sherpa SenseVoice',   hint: '⚡ ~40ms on CPU · English + Japanese (Recommended)' },
+    { id: 'sherpa:parakeet-ctc',  label: 'NVIDIA Parakeet-CTC',  hint: '⚡ ~90ms on CPU · English NeMo CTC' },
+    { id: 'whisper:small',        label: 'Whisper small',        hint: 'Faster-Whisper small (CPU int8)' },
+    { id: 'whisper:base',         label: 'Whisper base',         hint: 'Faster-Whisper base (Lightweight)' },
   ];
-  const [sttModel, setSttModel] = useState(() => localStorage.getItem('voicebench.stt.model') || 'base');
+  const [sttModel, setSttModel] = useState(() => localStorage.getItem('voicebench.stt.model') || 'sherpa:sense-voice');
 
   // ─── TTS ─────────────────────────────────────────────────────────────────────
   const TTS_VOICES = [
@@ -167,6 +166,8 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   const captureTimestampsRef = useRef<Map<number, number>>(new Map());
   const asrCommitMsRef = useRef<number | undefined>(undefined);
   const agentTurnLatencyMsRef = useRef<number | undefined>(undefined);
+  // Agent said goodbye (end_call event): let farewell TTS finish, then auto-stop.
+  const autoEndPendingRef = useRef(false);
 
   // Helper: safe fetch with timeout, returns ok bool
   const probeUrl = (url: string, timeoutMs = 2500): Promise<boolean> => {
@@ -305,9 +306,11 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
           }
           setEntries((prev) => {
             const index = prev.findIndex((e) => e.uttId === msg.uttId);
-            if (index >= 0) { const u = [...prev]; u[index] = { ...u[index], finalText: msg.text, partialText: undefined }; return u; }
-            return [...prev, { uttId: msg.uttId, finalText: msg.text }];
+            const update = { finalText: msg.text, partialText: undefined, lowConfidence: !!msg.lowConfidence };
+            if (index >= 0) { const u = [...prev]; u[index] = { ...u[index], ...update }; return u; }
+            return [...prev, { uttId: msg.uttId, ...update }];
           });
+
         } else if (msg.type === 'agent_text') {
           currentSessionIdRef.current = msg.sessionId;
           if (msg.metrics?.llmMs) {
@@ -329,6 +332,20 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
               else if (ev.type === 'compliance_block') setEventsFeed((p) => [{ type: 'compliance_block', rule: ev.payload?.rule || 'guard', text: ev.payload?.text || 'Guard intercepted disclosure', time: timeStr }, ...p]);
               else if (ev.type === 'escalate') setEventsFeed((p) => [{ type: 'escalate', text: `Escalated: ${ev.payload?.reason || ''}`, time: timeStr }, ...p]);
               else if (ev.type === 'stop_contact') { setStopContact(true); setEventsFeed((p) => [{ type: 'stop_contact', text: 'Stop-contact requested', time: timeStr }, ...p]); }
+              else if (ev.type === 'end_call') {
+                autoEndPendingRef.current = true;
+                setEventsFeed((p) => [{ type: 'end_call' as any, text: `Call ended by agent (${ev.payload?.status || 'completed'})`, time: timeStr }, ...p]);
+                setNotice('Agent ended the call — stopping after farewell audio…');
+                // If agent isn't speaking (no farewell TTS), stop right away.
+                setTimeout(() => {
+                  if (autoEndPendingRef.current) {
+                    autoEndPendingRef.current = false;
+                    sessionManagerRef.current?.stop();
+                    setIsAgentSpeaking(false);
+                    setNotice(null);
+                  }
+                }, 6000);
+              }
               else if (ev.type === 'candidate_qualified') { setScreeningQualified(true); setScreeningStage('qualified'); setEventsFeed((p) => [{ type: 'candidate_qualified', text: 'Candidate qualified', time: timeStr }, ...p]); }
               else if (ev.type === 'state_change' && ev.payload?.stage) setScreeningStage(ev.payload.stage);
             }
@@ -350,6 +367,14 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
           }
         } else if (msg.type === 'agent_speech_end') {
           setIsAgentSpeaking(false);
+          if (autoEndPendingRef.current) {
+            autoEndPendingRef.current = false;
+            // Farewell audio finished — close mic + socket so UI leaves Live state.
+            setTimeout(() => {
+              sessionManagerRef.current?.stop();
+              setNotice(null);
+            }, 1200);
+          }
         } else if (msg.type === 'interrupt') {
           setIsAgentSpeaking(false);
           const timeStr = new Date().toLocaleTimeString();
@@ -373,6 +398,7 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
 
   const handleToggle = () => {
     if (state === 'idle') {
+      autoEndPendingRef.current = false;
       setError(null);
       setNotice(null);
       setBrainModelUsed(null);
@@ -581,7 +607,7 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
             {/* STT */}
             <div>
               <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                STT model (Whisper)
+                STT engine & model
                 {sttOk !== null && <span style={{ fontSize: 10, color: sttOk ? '#16a34a' : '#dc2626' }}>● {sttOk ? 'up' : 'down'}</span>}
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
@@ -609,8 +635,7 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 4 }}>
                 {STT_MODELS.find((m) => m.id === sttModel)?.hint}
-                {(sttModel === 'large-v2' || sttModel === 'large-v3-turbo') && ' · Currently running on CPU — expect slower inference.'}
-                <span style={{ display: 'block' }}>Model loads at STT startup — changing it here applies to the next STT restart (server ignores it mid-call).</span>
+                <span style={{ display: 'block' }}>Selected ASR engine routes dynamically per call session.</span>
               </div>
             </div>
 
