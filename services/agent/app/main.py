@@ -13,6 +13,7 @@ import time
 import threading
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from prometheus_client import Histogram, Counter, generate_latest, CONTENT_TYPE_LATEST
 
@@ -30,6 +31,14 @@ from .generalized import GeneralizedVoiceAgent
 from .llm import llm_client
 
 app = FastAPI(title="Voice Agent Service", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Pre-instantiate agents
 guard = ComplianceGuard()

@@ -281,6 +281,7 @@ wss.on('connection', (clientWs: WebSocket) => {
                   {
                     abortSignal: session.currentTTSAbort.signal,
                     language: (session.config?.language as 'ja' | 'en') || 'ja',
+                    voice: (session.config?.tts as any)?.voice,
                   }
                 ).then(() => {
                   if (session.isAgentSpeaking) {
@@ -502,6 +503,7 @@ wss.on('connection', (clientWs: WebSocket) => {
                 {
                   abortSignal: session.currentTTSAbort.signal,
                   language: ttsLang,
+                  voice: (session.config?.tts as any)?.voice,
                 }
               )
               .then(() => {

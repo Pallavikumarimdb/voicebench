@@ -78,6 +78,16 @@ export interface AgentConfig {
     provider?: 'template' | 'local' | 'openai';
     model?: string;
   };
+  /** Speech-to-Text configuration. */
+  stt?: {
+    /** Whisper model size. Smaller = faster; larger = more accurate. */
+    model?: 'tiny' | 'base' | 'small' | 'medium' | 'large-v2' | 'large-v3-turbo' | string;
+  };
+  /** Text-to-Speech configuration. */
+  tts?: {
+    /** Azure Neural voice ID, e.g. 'ja-JP-NanamiNeural' or 'en-US-AriaNeural'. */
+    voice?: string;
+  };
 }
 
 export interface StartControlMessage {

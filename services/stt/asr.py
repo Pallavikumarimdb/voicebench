@@ -68,6 +68,9 @@ class ASRModelWrapper:
                 best_of=1,
                 temperature=0.0,
                 condition_on_previous_text=False, # Critical: prevents silence hallucination
+                no_speech_threshold=0.6,
+                compression_ratio_threshold=2.4,
+                hallucination_silence_threshold=0.5,
                 word_timestamps=word_timestamps
             )
 
@@ -76,9 +79,14 @@ class ASRModelWrapper:
             for seg in segments:
                 # Whisper invents phrases on noise/silence. Segments the model
                 # itself flags as non-speech are dropped rather than shown.
-                if getattr(seg, 'no_speech_prob', 0.0) > 0.75:
+                if getattr(seg, 'no_speech_prob', 0.0) > 0.6:
                     continue
-                full_text.append(seg.text)
+                
+                text_clean = seg.text.strip()
+                if not text_clean:
+                    continue
+
+                full_text.append(text_clean)
                 if seg.words:
                     for w in seg.words:
                         words_list.append({
@@ -88,8 +96,14 @@ class ASRModelWrapper:
                             "probability": round(w.probability, 3)
                         })
 
+            joined_text = " ".join(full_text).strip()
+            
+            # Deduplicate repeated phrase loops (e.g. "phrase. phrase. phrase.")
+            import re
+            deduped_text = re.sub(r'(\b.+?\b)(?:\s+\1){2,}', r'\1', joined_text, flags=re.IGNORECASE)
+
             return {
-                "text": "".join(full_text).strip(),
+                "text": deduped_text,
                 "words": words_list,
                 "language": info.language
             }

@@ -103,6 +103,7 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   const [activeDomain, setActiveDomain] = useState<DomainType>('collections');
   const [showSettings, setShowSettings] = useState(false);
 
+  // ─── Brain / LLM ────────────────────────────────────────────────────────────
   type BrainProvider = 'template' | 'local' | 'openai';
   const BRAIN_DEFAULT_MODEL: Record<BrainProvider, string> = { template: '', local: 'qwen3:1.7b', openai: 'gpt-4o-mini' };
   const [brainProvider, setBrainProvider] = useState<BrainProvider>(() => {
@@ -111,8 +112,36 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   });
   const [brainModel, setBrainModel] = useState(() => localStorage.getItem('voicebench.brain.model') || 'qwen3:1.7b');
   const [brainModelUsed, setBrainModelUsed] = useState<string | null>(null);
-  // Best-effort Ollama reachability (browser-side probe; unknown until checked).
-  const [ollamaOk, setOllamaOk] = useState<boolean | null>(null);
+
+  // ─── STT ────────────────────────────────────────────────────────────────────
+  const STT_MODELS = [
+    { id: 'base',            label: 'base',              hint: 'Fast · CPU-friendly' },
+    { id: 'small',           label: 'small',             hint: 'Balanced speed & accuracy' },
+    { id: 'medium',          label: 'medium',            hint: 'Higher accuracy' },
+    { id: 'large-v2',        label: 'large-v2',          hint: 'Best quality · needs GPU' },
+    { id: 'large-v3-turbo',  label: 'large-v3-turbo',   hint: 'Best quality + speed · needs GPU' },
+  ];
+  const [sttModel, setSttModel] = useState(() => localStorage.getItem('voicebench.stt.model') || 'base');
+
+  // ─── TTS ─────────────────────────────────────────────────────────────────────
+  const TTS_VOICES = [
+    { id: 'ja-JP-NanamiNeural',   label: 'Nanami (JA)',    lang: 'ja', hint: 'Japanese female · Natural' },
+    { id: 'ja-JP-KeitaNeural',    label: 'Keita (JA)',     lang: 'ja', hint: 'Japanese male' },
+    { id: 'en-US-AriaNeural',     label: 'Aria (EN)',      lang: 'en', hint: 'English female · Conversational' },
+    { id: 'en-US-GuyNeural',      label: 'Guy (EN)',       lang: 'en', hint: 'English male' },
+    { id: 'en-GB-SoniaNeural',    label: 'Sonia (EN-GB)', lang: 'en', hint: 'British female' },
+  ];
+  const defaultTtsVoice = (lang: AgentLanguage) => lang === 'en' ? 'en-US-AriaNeural' : 'ja-JP-NanamiNeural';
+  const [ttsVoice, setTtsVoice] = useState(() => localStorage.getItem('voicebench.tts.voice') || 'ja-JP-NanamiNeural');
+
+  // ─── Service health probes ───────────────────────────────────────────────────
+  // null = unknown, true = up, false = down
+  const [ollamaOk,  setOllamaOk]  = useState<boolean | null>(null);
+  const [openaiOk,  setOpenaiOk]  = useState<boolean | null>(null);
+  const [ttsOk,     setTtsOk]     = useState<boolean | null>(null);
+  const [sttOk,     setSttOk]     = useState<boolean | null>(null);
+  const [agentOk,   setAgentOk]   = useState<boolean | null>(null);
+
   const [customGreeting, setCustomGreeting] = useState(DOMAIN_PRESETS.ja.collections.greeting);
   const [customInstructions, setCustomInstructions] = useState(DOMAIN_PRESETS.ja.collections.instructions);
   const [targetContext, setTargetContext] = useState(DOMAIN_PRESETS.ja.collections.contextDesc);
@@ -136,35 +165,47 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   const sessionManagerRef = useRef<SessionManager | null>(null);
   const currentSessionIdRef = useRef<string | null>(null);
   const captureTimestampsRef = useRef<Map<number, number>>(new Map());
-  // Latency inputs mirrored into refs: the session effect below must mount
-  // exactly once per component lifetime. Reading state directly there (via
-  // effect deps) re-created the SessionManager on the first transcription
-  // and silently killed the live call (mic + socket torn down mid-turn).
   const asrCommitMsRef = useRef<number | undefined>(undefined);
   const agentTurnLatencyMsRef = useRef<number | undefined>(undefined);
 
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (state === 'streaming') {
-      setCallSeconds(0);
-      interval = setInterval(() => setCallSeconds((s) => s + 1), 1000);
-    }
-    return () => { if (interval) clearInterval(interval); };
-  }, [state]);
+  // Helper: safe fetch with timeout, returns ok bool
+  const probeUrl = (url: string, timeoutMs = 2500): Promise<boolean> => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    return fetch(url, { signal: ctrl.signal })
+      .then((r) => r.ok)
+      .catch(() => false)
+      .finally(() => clearTimeout(timer));
+  };
 
-  useEffect(() => {
-    if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-  }, [entries]);
-
+  // Probe all services once on mount, then every 30s
   useEffect(() => {
     let cancelled = false;
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 2500);
-    fetch('http://localhost:11434/api/tags', { signal: ctrl.signal })
-      .then((r) => { if (!cancelled) setOllamaOk(r.ok); })
-      .catch(() => { if (!cancelled) setOllamaOk(false); })
-      .finally(() => clearTimeout(timer));
-    return () => { cancelled = true; };
+    const runProbes = async () => {
+      const [ollama, tts, stt, agent] = await Promise.all([
+        probeUrl('http://localhost:11434/api/tags'),
+        probeUrl('http://localhost:8004/health'),
+        probeUrl('http://localhost:8001/health'),
+        probeUrl('http://localhost:8003/healthz'),
+      ]);
+      if (cancelled) return;
+      setOllamaOk(ollama);
+      setTtsOk(tts);
+      setSttOk(stt);
+      setAgentOk(agent);
+      // OpenAI status comes from agent healthz
+      if (agent) {
+        fetch('http://localhost:8003/healthz')
+          .then((r) => r.json())
+          .then((j) => { if (!cancelled) setOpenaiOk(j?.llm?.openai === true); })
+          .catch(() => { if (!cancelled) setOpenaiOk(false); });
+      } else {
+        setOpenaiOk(false);
+      }
+    };
+    runProbes();
+    const interval = setInterval(runProbes, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   const selectBrain = (p: BrainProvider) => {
@@ -200,7 +241,27 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
     setTargetContext(preset.contextDesc);
     setTargetSubject(preset.targetLabel);
     setActiveGuardrails(preset.guardrails);
+    // Sync TTS voice to language default only if still on a language-default voice
+    const currentVoiceLang = TTS_VOICES.find((v) => v.id === ttsVoice)?.lang;
+    if (!currentVoiceLang || currentVoiceLang !== lang) {
+      const dv = defaultTtsVoice(lang);
+      setTtsVoice(dv);
+      localStorage.setItem('voicebench.tts.voice', dv);
+    }
   };
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (state === 'streaming') {
+      setCallSeconds(0);
+      interval = setInterval(() => setCallSeconds((s) => s + 1), 1000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [state]);
+
+  useEffect(() => {
+    if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [entries]);
 
   useEffect(() => {
     const gatewayProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -328,6 +389,8 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
         domain: activeDomain, language: agentLanguage,
         instructions: customInstructions, greeting: customGreeting, guardrails: activeGuardrails,
         llm: { provider: brainProvider, model: brainModel.trim() || BRAIN_DEFAULT_MODEL[brainProvider] },
+        stt: { model: sttModel },
+        tts: { voice: ttsVoice },
         context: { targetSubject, contextDesc: targetContext, candidateName: targetSubject, customerName: targetSubject, debtorName: targetSubject }
       };
       sessionManagerRef.current?.start(agentLanguage, agentLanguage, 'agent', agentConfig);
@@ -434,11 +497,8 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
       </div>
 
       {showSettings && (
-        <div className="card card-pad" style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)' }}>Opening greeting</label>
-            <input className="input" value={customGreeting} onChange={(e) => setCustomGreeting(e.target.value)} disabled={state !== 'idle'} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box' }} />
-          </div>
+        <div className="card card-pad" style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* ── Row 1: Contact / Scenario / Greeting ── */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)' }}>Contact</label>
@@ -450,36 +510,46 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
             </div>
           </div>
           <div>
+            <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)' }}>Opening greeting</label>
+            <input className="input" value={customGreeting} onChange={(e) => setCustomGreeting(e.target.value)} disabled={state !== 'idle'} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box' }} />
+          </div>
+          <div>
             <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)' }}>System instructions</label>
             <textarea className="input" value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} disabled={state !== 'idle'} rows={3} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', resize: 'vertical' }} />
           </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: 0 }} />
+
+          {/* ── Row 2: Conversation Brain ── */}
           <div>
-            <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)' }}>Conversation brain</label>
-            <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              Conversation brain
+              {agentOk !== null && <span style={{ fontSize: 10, color: agentOk ? '#16a34a' : '#dc2626' }}>● Agent {agentOk ? 'up' : 'down'}</span>}
+            </label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
               {([
-                { id: 'template', label: 'Template', hint: 'Offline scripts' },
-                { id: 'local', label: 'Local Qwen', hint: 'Free · Ollama' },
-                { id: 'openai', label: 'OpenAI', hint: 'Paid API' },
-              ] as { id: BrainProvider; label: string; hint: string }[]).map((b) => {
+                { id: 'template', label: 'Template',    hint: 'Offline scripts — always works',    dot: true,    dotOk: true  },
+                { id: 'local',    label: 'Local Qwen',  hint: 'Ollama · Free · qwen3:1.7b',        dot: ollamaOk !== null, dotOk: ollamaOk === true  },
+                { id: 'openai',   label: 'OpenAI',      hint: 'gpt-4o-mini · Needs OPENAI_API_KEY', dot: openaiOk !== null, dotOk: openaiOk === true  },
+              ] as { id: BrainProvider; label: string; hint: string; dot: boolean; dotOk: boolean }[]).map((b) => {
                 const selected = brainProvider === b.id;
                 return (
                   <button
                     key={b.id}
+                    id={`brain-${b.id}`}
                     onClick={() => selectBrain(b.id)}
                     disabled={state !== 'idle'}
                     title={b.hint}
                     style={{
-                      padding: '6px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 650,
+                      padding: '6px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 650, display: 'flex', alignItems: 'center', gap: 5,
                       border: selected ? '1px solid #101828' : '1px solid var(--border-strong)',
-                      background: selected ? '#101828' : '#fff',
+                      background: selected ? '#101828' : 'var(--surface-1)',
                       color: selected ? '#fff' : 'var(--text-secondary)',
                       cursor: state === 'idle' ? 'pointer' : 'not-allowed',
                     }}
                   >
                     {b.label}
-                    {b.id === 'local' && ollamaOk !== null && (
-                      <span style={{ marginLeft: 6, color: ollamaOk ? '#a6f4c5' : '#fecdca' }}>●</span>
-                    )}
+                    {b.dot && <span style={{ fontSize: 8, color: b.dotOk ? '#4ade80' : '#f87171' }}>●</span>}
                   </button>
                 );
               })}
@@ -498,14 +568,94 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
             <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 4 }}>
               {brainProvider === 'template' && 'Deterministic scripts. Always works, no model needed.'}
               {brainProvider === 'local' && (ollamaOk === false
-                ? 'Ollama not reachable at localhost:11434 — run `ollama run qwen3:1.7b` first. Calls fall back to templates.'
-                : 'LLM restyles replies within guardrails; templates still decide. Falls back to templates on failure.')}
-              {brainProvider === 'openai' && 'Needs OPENAI_API_KEY on the agent service. Falls back to templates on failure.'}
+                ? '⚠ Ollama not reachable — run `ollama run qwen3:1.7b` first. Falls back to templates.'
+                : 'Restyles replies within guardrails. Falls back to templates on failure.')}
+              {brainProvider === 'openai' && (openaiOk
+                ? '✓ OPENAI_API_KEY detected.'
+                : '⚠ OPENAI_API_KEY not set on agent. Falls back to templates.')}
             </div>
           </div>
+
+          {/* ── Row 3: STT Model + TTS Voice (side by side) ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {/* STT */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                STT model (Whisper)
+                {sttOk !== null && <span style={{ fontSize: 10, color: sttOk ? '#16a34a' : '#dc2626' }}>● {sttOk ? 'up' : 'down'}</span>}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                {STT_MODELS.map((m) => {
+                  const sel = sttModel === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      id={`stt-${m.id}`}
+                      title={m.hint}
+                      onClick={() => { setSttModel(m.id); localStorage.setItem('voicebench.stt.model', m.id); }}
+                      disabled={state !== 'idle'}
+                      style={{
+                        padding: '5px 10px', borderRadius: 7, fontSize: 12, fontWeight: sel ? 650 : 450,
+                        border: sel ? '1px solid #101828' : '1px solid var(--border-strong)',
+                        background: sel ? '#101828' : 'var(--surface-1)',
+                        color: sel ? '#fff' : 'var(--text-secondary)',
+                        cursor: state === 'idle' ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                {STT_MODELS.find((m) => m.id === sttModel)?.hint}
+                {(sttModel === 'large-v2' || sttModel === 'large-v3-turbo') && ' · Currently running on CPU — expect slower inference.'}
+              </div>
+            </div>
+
+            {/* TTS */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                TTS voice (Edge Neural)
+                {ttsOk !== null && <span style={{ fontSize: 10, color: ttsOk ? '#16a34a' : '#dc2626' }}>● {ttsOk ? 'up' : 'down'}</span>}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                {TTS_VOICES.map((v) => {
+                  const sel = ttsVoice === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      id={`tts-${v.id}`}
+                      title={v.hint}
+                      onClick={() => { setTtsVoice(v.id); localStorage.setItem('voicebench.tts.voice', v.id); }}
+                      disabled={state !== 'idle'}
+                      style={{
+                        padding: '5px 10px', borderRadius: 7, fontSize: 12, fontWeight: sel ? 650 : 450,
+                        border: sel ? '1px solid #101828' : '1px solid var(--border-strong)',
+                        background: sel ? '#101828' : 'var(--surface-1)',
+                        color: sel ? '#fff' : 'var(--text-secondary)',
+                        cursor: state === 'idle' ? 'pointer' : 'not-allowed',
+                        opacity: v.lang !== agentLanguage ? 0.45 : 1,
+                      }}
+                    >
+                      {v.label}
+                      {v.lang !== agentLanguage && <span style={{ marginLeft: 4, fontSize: 9 }}>↗</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                {TTS_VOICES.find((v) => v.id === ttsVoice)?.hint || ttsVoice}
+                {!ttsOk && ttsOk !== null && ' · TTS service down — check port 8004.'}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Guardrails ── */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {activeGuardrails.map((g) => <Badge key={g} tone="success">{g}</Badge>)}
           </div>
+
         </div>
       )}
 

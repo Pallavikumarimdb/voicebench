@@ -7,7 +7,7 @@ export class AgentClient {
 
   constructor(
     serviceUrl: string = process.env.AGENT_SERVICE_URL || 'http://localhost:8003/turn',
-    timeoutMs = 10000
+    timeoutMs = 30000
   ) {
     this.serviceUrl = serviceUrl;
     this.timeoutMs = timeoutMs;

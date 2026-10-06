@@ -7,6 +7,7 @@ import asyncio
 import traceback
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from prometheus_client import Histogram, Counter, generate_latest, CONTENT_TYPE_LATEST
 
@@ -15,6 +16,14 @@ from asr import ASRModelWrapper
 from session_state import SessionState
 
 app = FastAPI(title="Voice STT Service", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Prometheus Metrics
 ASR_DURATION = Histogram(
@@ -68,6 +77,9 @@ async def websocket_stream(websocket: WebSocket):
     try:
         while True:
             message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                print(f"[STT] WebSocket disconnect frame received for session {session.session_id}")
+                break
 
             if "bytes" in message and message["bytes"] is not None:
                 raw_bytes = message["bytes"]
@@ -147,7 +159,10 @@ async def websocket_stream(websocket: WebSocket):
                                     "tCapture": session.last_capture_time_ms,
                                     "tFinal": int(time.time() * 1000)
                                 }
-                                await websocket.send_text(json.dumps(final_msg))
+                                try:
+                                    await websocket.send_text(json.dumps(final_msg))
+                                except Exception:
+                                    pass
 
                                 # Log structured event for offline eval replays
                                 print(json.dumps({
@@ -201,7 +216,10 @@ async def websocket_stream(websocket: WebSocket):
                                         "tCapture": session.last_capture_time_ms,
                                         "tEmit": int(time.time() * 1000)
                                     }
-                                    await websocket.send_text(json.dumps(partial_msg))
+                                    try:
+                                        await websocket.send_text(json.dumps(partial_msg))
+                                    except Exception:
+                                        pass
                 except Exception:
                     # Send/write failures on a dying socket are expected during
                     # teardown: end the stream quietly instead of traceback-spam.
