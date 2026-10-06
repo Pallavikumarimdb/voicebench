@@ -26,12 +26,14 @@ export const Captions: React.FC<CaptionsProps> = ({ entries }) => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ borderLeft: '2px solid var(--border-strong)', paddingLeft: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)' }}>Caller</div>
-              <div style={{ fontSize: 14, fontStyle: entry.finalText ? 'normal' : 'italic', color: entry.finalText ? 'var(--text)' : 'var(--text-tertiary)' }}>
-                {entry.finalText || entry.partialText || 'Listening…'}
+            {(entry.finalText || entry.partialText || entry.uttId !== 0) && (
+              <div style={{ borderLeft: '2px solid var(--border-strong)', paddingLeft: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)' }}>Caller</div>
+                <div style={{ fontSize: 14, fontStyle: entry.finalText ? 'normal' : 'italic', color: entry.finalText ? 'var(--text)' : 'var(--text-tertiary)' }}>
+                  {entry.finalText || entry.partialText || 'Listening…'}
+                </div>
               </div>
-            </div>
+            )}
 
             {entry.translation && (
               <div style={{ marginLeft: 10, padding: '8px 10px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}>
