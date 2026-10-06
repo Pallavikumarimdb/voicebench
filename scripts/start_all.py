@@ -163,7 +163,7 @@ def main():
             print("🚀 Starting Agent Service on http://localhost:8003 ...")
             pm.start_service(
                 "AGENT",
-                [py_bin, "-m", "uvicorn", "services.agent.app.main:app", "--host", "0.0.0.0", "--port", "8003"],
+                [py_bin, "-m", "uvicorn", "services.agent.app.main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"],
                 cwd=ROOT_DIR,
             )
 
@@ -175,7 +175,7 @@ def main():
             print("🚀 Starting TTS Service on http://localhost:8004 ...")
             pm.start_service(
                 "TTS",
-                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004"],
+                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004", "--reload"],
                 cwd=os.path.join(ROOT_DIR, "services", "tts"),
             )
 
@@ -187,7 +187,7 @@ def main():
             print("🚀 Starting STT Service on ws://localhost:8001/stream ...")
             pm.start_service(
                 "STT",
-                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"],
+                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"],
                 cwd=os.path.join(ROOT_DIR, "services", "stt"),
             )
 
@@ -199,7 +199,7 @@ def main():
             print("🚀 Starting MT Service on http://localhost:8002 ...")
             pm.start_service(
                 "MT",
-                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"],
+                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"],
                 cwd=os.path.join(ROOT_DIR, "services", "mt"),
             )
 
