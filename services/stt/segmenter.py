@@ -38,7 +38,7 @@ class Segmenter:
     - Captures preroll audio preceding speech start.
     - Finalizes when silence >= hangover_ms or duration >= max_len_ms.
     """
-    def __init__(self, hangover_ms: int = 500, preroll_ms: int = 200, max_len_ms: int = 18000, sample_rate: int = 16000):
+    def __init__(self, hangover_ms: int = 450, preroll_ms: int = 200, max_len_ms: int = 6000, sample_rate: int = 16000):
         self.hangover_ms = hangover_ms
         self.preroll_ms = preroll_ms
         self.max_len_ms = max_len_ms
@@ -53,9 +53,10 @@ class Segmenter:
     def on_frame(self, frame_samples: np.ndarray, prob: float, t_ms: int, frame_ms: int = 20) -> np.ndarray | None:
         self.buffer.append(frame_samples)
 
-        if prob > 0.5:
+        if prob > 0.55:
             self.speech_run_frames += 1
-            self.silence_run_ms = 0
+            if self.speech_run_frames >= 2:
+                self.silence_run_ms = 0
             if self.state == State.IDLE and self.speech_run_frames >= 2:
                 self.state = State.SPEECH
                 self.segment_start_ms = max(0, t_ms - self.preroll_ms)

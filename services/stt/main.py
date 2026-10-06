@@ -135,53 +135,55 @@ async def websocket_stream(websocket: WebSocket):
 
                     # 3. If speech segment was finalized by VAD silence hangover / max length:
                     if finalized_segment is not None and len(finalized_segment) > 1600: # at least 100ms
-                        if not session.asr_busy:
-                            session.asr_busy = True
+                        while session.asr_busy:
+                            await asyncio.sleep(0.02)
+                        session.asr_busy = True
+                        try:
+                            with ASR_DURATION.labels(model=asr_wrapper.model_size, chunk_ms="final").time():
+                                asr_result = await asyncio.to_thread(
+                                    asr_wrapper.transcribe,
+                                    finalized_segment,
+                                    session.src_lang,
+                                    True
+                                )
+                        finally:
+                            session.asr_busy = False
+
+                        final_text = asr_result["text"]
+                        if final_text:
+                            COMMITTED_UTTERANCES.inc()
+                            final_msg = {
+                                "type": "final",
+                                "uttId": session.current_utt_id,
+                                "text": final_text,
+                                "words": asr_result["words"],
+                                "tCapture": session.last_capture_time_ms,
+                                "tFinal": int(time.time() * 1000)
+                            }
                             try:
-                                with ASR_DURATION.labels(model=asr_wrapper.model_size, chunk_ms="final").time():
-                                    asr_result = await asyncio.to_thread(
-                                        asr_wrapper.transcribe,
-                                        finalized_segment,
-                                        session.src_lang,
-                                        True
-                                    )
-                            finally:
-                                session.asr_busy = False
+                                await websocket.send_text(json.dumps(final_msg))
+                            except Exception:
+                                pass
 
-                            final_text = asr_result["text"]
-                            if final_text:
-                                COMMITTED_UTTERANCES.inc()
-                                final_msg = {
-                                    "type": "final",
-                                    "uttId": session.current_utt_id,
-                                    "text": final_text,
-                                    "words": asr_result["words"],
-                                    "tCapture": session.last_capture_time_ms,
-                                    "tFinal": int(time.time() * 1000)
-                                }
-                                try:
-                                    await websocket.send_text(json.dumps(final_msg))
-                                except Exception:
-                                    pass
+                            # Log structured event for offline eval replays
+                            print(json.dumps({
+                                "sessionId": session.session_id,
+                                "uttId": session.current_utt_id,
+                                "stage": "asr_final",
+                                "tCapture": session.last_capture_time_ms,
+                                "tFinal": final_msg["tFinal"],
+                                "text": final_text
+                            }))
 
-                                # Log structured event for offline eval replays
-                                print(json.dumps({
-                                    "sessionId": session.session_id,
-                                    "uttId": session.current_utt_id,
-                                    "stage": "asr_final",
-                                    "tCapture": session.last_capture_time_ms,
-                                    "tFinal": final_msg["tFinal"],
-                                    "text": final_text
-                                }))
-
-                                session.next_utterance()
+                            session.next_utterance()
 
                     # 4. Periodic partial ASR running every min_chunk_ms, but only
                     # while speech is (or was very recently) active. Transcribing
                     # pure silence wastes CPU on slow hosts and makes Whisper
                     # hallucinate random phrases.
                     elif len(session.active_audio) >= int((min_chunk_ms / 1000.0) * session.sample_rate):
-                        if (now_ms - session.last_asr_run_time_ms) >= min_chunk_ms:
+                        cpu_min_interval = 1200 if asr_wrapper.device == "cpu" else min_chunk_ms
+                        if (now_ms - session.last_asr_run_time_ms) >= cpu_min_interval:
                             session.last_asr_run_time_ms = now_ms
 
                             if session.asr_busy or (now_ms - session.last_speech_ms) > 2500:
