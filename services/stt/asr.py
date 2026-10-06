@@ -24,6 +24,19 @@ class ASRModelWrapper:
             from faster_whisper import WhisperModel
             import torch
 
+            # Allow override via env; default to all cores minus one on CPU.
+            if "STT_CPU_THREADS" in os.environ:
+                try:
+                    cpu_threads = max(1, int(os.environ["STT_CPU_THREADS"]))
+                except ValueError:
+                    pass
+            elif cpu_threads <= 4:
+                try:
+                    import multiprocessing
+                    cpu_threads = max(1, (multiprocessing.cpu_count() or 4) - 1)
+                except Exception:
+                    pass
+
             # If CUDA requested but unavailable, fall back to CPU
             actual_device = self.device
             actual_compute = self.compute_type
@@ -97,6 +110,26 @@ class ASRModelWrapper:
                         })
 
             joined_text = " ".join(full_text).strip()
+            avg_prob = (
+                sum(w["probability"] for w in words_list) / len(words_list)
+                if words_list else 0.0
+            )
+
+            # Single-word low-confidence finals ("you", "uh", "oh") are
+            # classic Whisper-on-silence hallucinations. Drop them here so
+            # they never eat an agent turn or count as an auth attempt.
+            _HALLUCINATED_SINGLES = {
+                "you", "uh", "um", "oh", "ah", "hmm", "mm", "yeah",
+                "thank you", "thanks", ".",
+            }
+            lowered = joined_text.lower().strip(" .!?,;:'\"")
+            if (
+                joined_text
+                and (len(words_list) <= 2 and avg_prob < 0.7 and lowered in _HALLUCINATED_SINGLES)
+            ):
+                return {"text": "", "words": [], "language": language}
+            if joined_text and len(joined_text.strip()) < 2:
+                return {"text": "", "words": [], "language": language}
             
             # Deduplicate repeated phrase loops (e.g. "phrase. phrase. phrase.")
             import re

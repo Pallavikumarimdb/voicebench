@@ -76,7 +76,9 @@ def test_screening_turn_interaction():
     resp = client.post("/turn", json=req_payload)
     assert resp.status_code == 200
     data = resp.json()
-    assert "佐藤 健一" in data["text"] or "採用" in data["text"]
+    # Turn 1 is the reply to the already-spoken greeting: it must advance
+    # (acknowledge background + ask next slot), never re-greet verbatim.
+    assert "勤務形態" in data["text"] or "年収" in data["text"] or "ご経験" in data["text"]
     assert "events" in data
     assert any(e["payload"].get("domain") == "screening" for e in data["events"])
 
@@ -98,8 +100,7 @@ def test_english_screening_turn_interaction():
     resp = client.post("/turn", json=req_payload)
     assert resp.status_code == 200
     data = resp.json()
-    assert "Alex Johnson" in data["text"]
-    assert "Recruiting" in data["text"] or "interview" in data["text"]
+    assert "working arrangement" in data["text"] or "compensation" in data["text"]
     assert any(e["payload"].get("language") == "en" for e in data["events"])
 
 def test_english_collections_turn_interaction():
@@ -119,7 +120,7 @@ def test_english_collections_turn_interaction():
     resp = client.post("/turn", json=req_payload)
     assert resp.status_code == 200
     data = resp.json()
-    assert "Alex Johnson" in data["text"]
-    assert "Accounts Management" in data["text"]
+    # Gateway already greeted (utt 0): turn 1 must ask for DOB, not re-greet.
+    assert "date of birth" in data["text"].lower()
     assert any(e["payload"].get("language") == "en" for e in data["events"])
 

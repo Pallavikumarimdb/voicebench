@@ -39,6 +39,34 @@ const ttsClient = new TTSClient(TTS_URL);
  * Used to catch the agent's own voice (speaker echo) being transcribed as
  * the caller — without this, the echo eats a turn and triggers a bogus reply.
  */
+// Pure filler sounds and punctuation-only outputs from Whisper on silence/noise.
+// Intentionally NOT including real single-word responses like "yes", "no", "bye",
+// "sure", "ok", "hello" — those are valid short caller turns.
+const LOW_QUALITY_FINALS = new Set([
+  'uh', 'um', 'oh', 'ah', 'hmm', 'mm', '.', 'a', 'i',
+]);
+
+// Real short words that are valid caller responses and must never be blocked.
+const VALID_SHORT_WORDS = new Set([
+  'yes', 'no', 'bye', 'hi', 'ok', 'sure', 'yep', 'nah', 'nope',
+  'hey', 'yup', 'fine', 'stop', 'wait', 'good', 'bad', 'help',
+]);
+
+function isLowQualityFinal(text: string): boolean {
+  const t = (text || '').trim();
+  if (!t) return true;
+  if (t.length < 2) return true;
+  const norm = t.toLowerCase().replace(/^[.\s,!?;:'"]+|[.\s,!?;:'"]+$/g, '');
+  if (!norm) return true;
+  // Always pass through real short-word responses (yes, no, bye, ok, etc.)
+  if (VALID_SHORT_WORDS.has(norm)) return false;
+  if (LOW_QUALITY_FINALS.has(norm)) return true;
+  // Single word with no digit and <=2 chars (not a real word) is
+  // almost always a VAD-blip hallucination — show it, never act on it.
+  // Raised from <=3 to <=2 so "bye", "ok" etc. are not caught.
+  if (!norm.includes(' ') && norm.length <= 2 && !/\d/.test(norm)) return true;
+  return false;
+}
 function echoOverlap(finalText: string, agentText: string): { ratio: number; shared: number } {
   const norm = (s: string) =>
     s
@@ -51,11 +79,18 @@ function echoOverlap(finalText: string, agentText: string): { ratio: number; sha
   const a = new Set(norm(agentText));
   const shared = f.filter((t) => a.has(t)).length;
   let ratio = shared / f.length;
-  // CJK has no spaces: fall back to substring containment for longer finals.
-  const strippedFinal = finalText.replace(/\s+/g, '');
-  if (strippedFinal.length >= 4 && agentText.replace(/\s+/g, '').includes(strippedFinal)) {
-    return { ratio: Math.max(ratio, 0.6), shared: Math.max(shared, 3) };
+  // Punctuation-insensitive substring: "accounts management." must match
+  // "…Accounts Management calling…" even with trailing period.
+  const strip = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9\u3040-\u30ff\u4e00-\u9faf]/g, '');
+  const strippedFinal = strip(finalText);
+  const strippedAgent = strip(agentText);
+  if (strippedFinal.length >= 8 && strippedAgent.includes(strippedFinal)) {
+    return { ratio: Math.max(ratio, 0.9), shared: Math.max(shared, f.length) };
   }
+  // Short-fragment echo: 2 shared words at >=50% is enough when the final
+  // itself is short ("accounts management." = 2/2). Old shared>=3 gate let
+  // these leak and eat turns.
   return { ratio, shared };
 }
 
@@ -190,18 +225,34 @@ wss.on('connection', (clientWs: WebSocket) => {
             // Echo check (agent mode only): audio captured while our own voice
             // was playing that heavily overlaps it is speaker echo, not caller
             // speech. Display it, but never let it eat a turn or cut playback.
+            // Must cover ACTIVE playback (isAgentSpeaking) — not just past
+            // playback (lastAgentSpeechEndAt). The old check missed echoes
+            // like "accounts management." captured mid-greeting because
+            // lastAgentSpeechEndAt wasn't set yet.
             let isEcho = false;
-            if (session.mode === 'agent' && session.lastAgentText && session.lastAgentSpeechEndAt && sttMsg.tCapture) {
-              const heardDuringPlayback =
+            if (session.mode === 'agent' && session.lastAgentText && sttMsg.tCapture) {
+              const nowMs = Date.now();
+              const activePlayback =
+                session.isAgentSpeaking &&
+                sttMsg.tCapture >= (session.agentSpeakingStartedAt || 0) - 1500 &&
+                sttMsg.tCapture <= nowMs + 500;
+              const recentPlayback =
+                !!session.lastAgentSpeechEndAt &&
                 sttMsg.tCapture < session.lastAgentSpeechEndAt &&
                 session.lastAgentSpeechEndAt - sttMsg.tCapture < 30000;
-              if (heardDuringPlayback) {
+              if (activePlayback || recentPlayback) {
                 const { ratio, shared } = echoOverlap(currentText, session.lastAgentText);
-                isEcho = shared >= 3 && ratio >= 0.5;
+                isEcho = shared >= 2 && ratio >= 0.5;
               }
             }
 
             if (session.mode === 'agent' && !isEcho) {
+              // Hallucinated blips ("you", ".", "be 90") must be displayed
+              // but must never consume an agent turn or count as auth input.
+              if (isLowQualityFinal(currentText)) {
+                console.log(`[Gateway] Low-quality final ignored for turn logic: utt ${currentUttId} "${currentText}"`);
+                sendJson(clientWs, { ...sttMsg, tFinal, lowConfidence: true });
+              } else {
               const res = await agentClient.turn({
                 sessionId: session.id,
                 uttId: currentUttId,
@@ -209,6 +260,9 @@ wss.on('connection', (clientWs: WebSocket) => {
                 tCaptureMs: sttMsg.tCapture,
                 config: session.config,
                 context: session.contextWindow.slice(-5),
+              }).catch((agentErr) => {
+                console.error(`[Gateway] Agent turn failed for ${currentUttId}:`, agentErr?.message || agentErr);
+                return null;
               });
 
               const tAgentDone = Date.now();
@@ -306,10 +360,14 @@ wss.on('connection', (clientWs: WebSocket) => {
                   uttId: currentUttId,
                 });
               }
+              } // end low-quality guard
             } else if (isEcho) {
               console.log(`[Gateway] Echo suppressed for utterance ${currentUttId} (matches own playback)`);
               sendJson(clientWs, { ...sttMsg, tFinal, echo: true });
             } else {
+              if (isLowQualityFinal(currentText)) {
+                sendJson(clientWs, { ...sttMsg, tFinal, lowConfidence: true });
+              } else {
               // Asynchronously dispatch translation to stateless MT service
               const res = await mtClient.translate({
                 uttId: currentUttId,
@@ -344,6 +402,7 @@ wss.on('connection', (clientWs: WebSocket) => {
                   code: 'MT_UNAVAILABLE',
                   uttId: currentUttId,
                 });
+              }
               }
             }
           }

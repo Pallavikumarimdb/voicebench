@@ -43,6 +43,12 @@ class SessionState:
         # burn CPU transcribing long silence (which also causes hallucinations).
         self.asr_busy = False
         self.last_speech_ms = 0
+        # Single-slot pending queue: if ASR is busy when a new final arrives,
+        # store it here (overwrite any older pending) and process after current
+        # transcription completes. Prevents short phrases from being silently dropped.
+        self.pending_segment: np.ndarray | None = None
+        self.pending_capture_ms: int = 0
+
 
     def append_audio(self, audio_chunk: np.ndarray, t_capture_ms: int):
         self.last_capture_time_ms = t_capture_ms

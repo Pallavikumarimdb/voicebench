@@ -136,6 +136,12 @@ def main():
         action="store_true",
         help="Do not start the client Vite dev server (useful if already running)",
     )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable uvicorn --reload for backend services (dev only). "
+        "Default OFF: reload restarts STT mid-call and wipes live audio.",
+    )
     args = parser.parse_args()
 
     mode = args.mode.lower()
@@ -150,6 +156,9 @@ def main():
 
     npm_bin = get_npm_cmd()
     py_bin = sys.executable
+    reload_flag = ["--reload"] if args.reload else []
+    if not args.reload:
+        print("ℹ Live-reload OFF (stable calls). Use --reload for dev hot-reload.")
 
     print(f"\n{COLORS['BOLD']}============================================================{COLORS['RESET']}")
     print(f"{COLORS['BOLD']}  Voice AI Infrastructure - Starting Pipeline in [{mode.upper()}] Mode{COLORS['RESET']}")
@@ -163,7 +172,7 @@ def main():
             print("🚀 Starting Agent Service on http://localhost:8003 ...")
             pm.start_service(
                 "AGENT",
-                [py_bin, "-m", "uvicorn", "services.agent.app.main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"],
+                [py_bin, "-m", "uvicorn", "services.agent.app.main:app", "--host", "0.0.0.0", "--port", "8003"] + reload_flag,
                 cwd=ROOT_DIR,
             )
 
@@ -175,7 +184,7 @@ def main():
             print("🚀 Starting TTS Service on http://localhost:8004 ...")
             pm.start_service(
                 "TTS",
-                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004", "--reload"],
+                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004"] + reload_flag,
                 cwd=os.path.join(ROOT_DIR, "services", "tts"),
             )
 
@@ -187,7 +196,7 @@ def main():
             print("🚀 Starting STT Service on ws://localhost:8001/stream ...")
             pm.start_service(
                 "STT",
-                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"],
+                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"] + reload_flag,
                 cwd=os.path.join(ROOT_DIR, "services", "stt"),
             )
 
@@ -199,7 +208,7 @@ def main():
             print("🚀 Starting MT Service on http://localhost:8002 ...")
             pm.start_service(
                 "MT",
-                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"],
+                [py_bin, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"] + reload_flag,
                 cwd=os.path.join(ROOT_DIR, "services", "mt"),
             )
 

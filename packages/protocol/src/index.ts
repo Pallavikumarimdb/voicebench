@@ -36,6 +36,8 @@ export interface FinalMessage {
   tFinal: number;
   /** True when the gateway classified this as speaker echo (shown, not acted on). */
   echo?: boolean;
+  /** True when the text is too short/noisy to act on (shown, agent not called). */
+  lowConfidence?: boolean;
 }
 
 export interface TranslatedMessage {

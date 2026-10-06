@@ -48,11 +48,40 @@ def _heard_date(text: str, language: str) -> bool:
             return True
         # Romaji dates from speech recognition ("1985 nen 4 gatsu 12 nichi").
         return bool(re.search(r"\d+\s*(nen|gatsu|nichi)|tanjoubi|umare|seinen gappi", t))
-    return bool(re.search(
+    # Digits: 04/15/1988, 1988-04-15, "born ...", month names.
+    if re.search(
         rf"\b({_MONTHS_EN})\b|\b(19|20)\d{{2}}\b|\b\d{{1,2}}[/-]\d{{1,2}}([/-]\d{{2,4}})?\b"
         r"|\bborn\b|\bbirth\b|\bdob\b",
         t,
-    ))
+    ):
+        return True
+    # Spelled-out dates from Whisper base ("april fifteenth nineteen
+    # eighty eight", "born april fifteen"). Digit regexes miss these.
+    _NUMBER_WORDS = (
+        "zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+        "thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|"
+        "thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|first|"
+        "second|third|fifth|eighth|ninth|twelfth|teenth|tieth"
+    )
+    if re.search(rf"\b({_MONTHS_EN})\b", t) and re.search(rf"\b({_NUMBER_WORDS})\b", t):
+        return True
+    if re.search(rf"\b(born|birth|dob)\b", t) and re.search(rf"\b({_NUMBER_WORDS}|\d)\b", t):
+        return True
+    # Bare 4+ digit run (phone tail / PIN) counts as credential downstream,
+    # but a month + number-word pair is enough for DOB intent.
+    return False
+
+
+def _is_low_quality(text: str) -> bool:
+    """STT blips that must not consume verification attempts."""
+    t = (text or "").strip().lower().strip(" .!?,;:'\"")
+    if not t or len(t) < 2:
+        return True
+    if t in {"you", "uh", "um", "oh", "ah", "hmm", "mm", "yeah", ".", "a", "i"}:
+        return True
+    if " " not in t and len(t) <= 3 and not re.sub(r"\D", "", t):
+        return True
+    return False
 
 
 def _heard_credential(text: str, language: str) -> bool:
@@ -359,7 +388,7 @@ class GeneralizedVoiceAgent:
             ]
             res = llm_client.complete_with(
                 provider, messages, model=model,
-                temperature=0.3, max_tokens=120, timeout_s=8.0,
+                temperature=0.3, max_tokens=120, timeout_s=2.5,
             )
             text = (res.get("text") or "").strip()
             if not text or len(text) > 600:
@@ -392,11 +421,35 @@ class GeneralizedVoiceAgent:
             ctx.state["stage"] = "experience_inquiry"
             ctx.state["candidate_name"] = candidate_name
             ctx.state["target_role"] = target_role
+            # Gateway already greeted: if the caller actually said something
+            # substantive, acknowledge it instead of re-greeting verbatim.
+            if ctx.user_text and len(ctx.user_text.strip()) >= 3 and not _is_low_quality(ctx.user_text):
+                quoted = _quote(ctx.user_text, 80)
+                if ctx.language == "ja":
+                    reply = (
+                        f"ご経験について「{quoted}」とお聞かせいただきありがとうございます。"
+                        f"続いて、勤務形態のご希望とご希望の年収レンジについてお聞かせいただけますでしょうか。"
+                    )
+                else:
+                    reply = (
+                        f"Thanks for sharing that — noted your background in \"{quoted}\". "
+                        f"Moving on, could you tell me about your preferred working arrangement "
+                        f"and your expected compensation range?"
+                    )
+                ctx.state["stage"] = "compensation_and_work_style"
+                events.append({"type": "state_change", "payload": {"stage": "compensation_and_work_style", "domain": "screening", "language": ctx.language}, "ts": int(time.time() * 1000)})
+                return reply, events
             reply = tmpl[1](candidate_name, target_role, ctx.greeting)
             events.append({"type": "state_change", "payload": {"stage": "experience_inquiry", "domain": "screening", "language": ctx.language}, "ts": int(time.time() * 1000)})
             return reply, events
 
         elif ctx.turn == 2:
+            if _is_low_quality(ctx.user_text):
+                if ctx.language == "ja":
+                    reply = "恐れ入ります。ご経歴について、もう少し詳しくお聞かせいただけますでしょうか。"
+                else:
+                    reply = "Sorry, I didn't catch that — could you tell me about your recent experience and tech stack?"
+                return reply, events
             ctx.state["stage"] = "compensation_and_work_style"
             ctx.state["tech_stack_noted"] = True
             quoted = _quote(ctx.user_text, 80)
@@ -447,6 +500,21 @@ class GeneralizedVoiceAgent:
 
         if ctx.turn == 1:
             ctx.state["stage"] = "identity_verification"
+            # Gateway already greeted (utt 0): treat this as the reply.
+            if _is_low_quality(ctx.user_text):
+                reply = (
+                    "恐れ入ります。音声が聞き取りにくかったようです。生年月日、またはお電話番号の下4桁をお知らせください。"
+                    if ja else
+                    "Sorry, I didn't catch that — could you share your date of birth or the last 4 digits of your registered phone number?"
+                )
+                events.append({"type": "state_change", "payload": {"stage": "auth_requested", "domain": "kyc", "language": ctx.language}, "ts": int(time.time() * 1000)})
+                return reply, events
+            if _heard_credential(ctx.user_text, ctx.language):
+                ctx.state["stage"] = "service_inquiry"
+                ctx.state["identity_verified"] = True
+                reply = tmpl[2]()
+                events.append({"type": "identity_verified", "payload": {"verified": True}, "ts": int(time.time() * 1000)})
+                return reply, events
             reply = tmpl[1](customer_name, account_id, ctx.greeting)
             events.append({"type": "state_change", "payload": {"stage": "auth_requested", "domain": "kyc", "language": ctx.language}, "ts": int(time.time() * 1000)})
             return reply, events
@@ -464,6 +532,14 @@ class GeneralizedVoiceAgent:
                 )
                 events.append({"type": "escalate", "payload": {"reason": "kyc_auth_failed"}, "ts": int(time.time() * 1000)})
                 events.append({"type": "end_call", "payload": {"status": "auth_failed"}, "ts": int(time.time() * 1000)})
+                return reply, events
+
+            if _is_low_quality(ctx.user_text):
+                reply = (
+                    "恐れ入ります。音声が聞き取りにくかったようです。生年月日、またはお電話番号の下4桁をお知らせください。"
+                    if ja else
+                    "Sorry, I didn't catch that clearly — could you please share your date of birth or the last 4 digits of your registered phone number?"
+                )
                 return reply, events
 
             if not _heard_credential(ctx.user_text, ctx.language):
@@ -563,13 +639,45 @@ class GeneralizedVoiceAgent:
             ctx.state["stage"] = "identity_verification"
             ctx.state["debtor_name"] = debtor_name
             ctx.state["verification_attempts"] = 0
-            reply = tmpl[1](debtor_name, ctx.greeting)
+            # The gateway already spoke the greeting (utt 0). This turn is
+            # the caller's REPLY to it — never re-greet. If they affirmed
+            # identity ("yes, this is Alex"), move straight to DOB ask.
+            # If Whisper gave us a blip ("with Alex.", "you"), ask for DOB
+            # without burning a verification attempt.
+            if _is_low_quality(ctx.user_text):
+                reply = (
+                    "ご本人様確認のため、生年月日をお知らせいただけますでしょうか。"
+                    if ja else
+                    "Thanks — to verify your identity, could you please share your date of birth?"
+                )
+                events.append({"type": "state_change", "payload": {"stage": "auth_requested", "domain": "collections", "language": ctx.language}, "ts": int(time.time() * 1000)})
+                return reply, events
+            if _heard_date(ctx.user_text, ctx.language):
+                ctx.state["stage"] = "negotiation"
+                ctx.state["identity_verified"] = True
+                reply = tmpl[2]()
+                events.append({"type": "identity_verified", "payload": {"verified": True}, "ts": int(time.time() * 1000)})
+                return reply, events
+            # Affirmative or name-like reply -> ask DOB (don't repeat greeting).
+            reply = (
+                "ご本人様確認ありがとうございます。本人確認のため、生年月日をお知らせいただけますでしょうか。"
+                if ja else
+                "Thank you — to verify your identity, could you please share your date of birth?"
+            )
             events.append({"type": "state_change", "payload": {"stage": "auth_requested", "domain": "collections", "language": ctx.language}, "ts": int(time.time() * 1000)})
             return reply, events
 
         stage = ctx.state.get("stage", "identity_verification")
 
         if stage == "identity_verification":
+            if _is_low_quality(ctx.user_text):
+                # Don't burn an attempt on STT noise — re-ask cleanly.
+                reply = (
+                    "恐れ入ります。音声が聞き取りにくかったようです。生年月日をお知らせいただけますでしょうか。"
+                    if ja else
+                    "Sorry, I didn't catch that clearly — could you please share your date of birth?"
+                )
+                return reply, events
             if _heard_date(ctx.user_text, ctx.language):
                 ctx.state["stage"] = "negotiation"
                 ctx.state["identity_verified"] = True

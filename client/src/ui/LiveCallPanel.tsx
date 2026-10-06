@@ -610,6 +610,7 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
               <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 4 }}>
                 {STT_MODELS.find((m) => m.id === sttModel)?.hint}
                 {(sttModel === 'large-v2' || sttModel === 'large-v3-turbo') && ' · Currently running on CPU — expect slower inference.'}
+                <span style={{ display: 'block' }}>Model loads at STT startup — changing it here applies to the next STT restart (server ignores it mid-call).</span>
               </div>
             </div>
 

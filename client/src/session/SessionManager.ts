@@ -20,6 +20,8 @@ export class SessionManager {
   private callbacks: SessionCallbacks;
   private activeSources: AudioBufferSourceNode[] = [];
   private nextPlayTime = 0;
+  private agentSpeechStartedAt = 0;
+  private lastAgentChunkAt = 0;
 
   constructor(gatewayUrl: string, callbacks: SessionCallbacks) {
     this.gatewayUrl = gatewayUrl;
@@ -68,6 +70,10 @@ export class SessionManager {
             const msg = JSON.parse(event.data) as GatewayMessage;
             if (msg.type === 'agent_audio_chunk') {
               this.playPcm16Chunk(msg.pcm16Base64);
+            } else if (msg.type === 'agent_speech_start') {
+              // Mark speech start immediately so the 400ms echo-suppression
+              // window covers the first chunk even under jitter.
+              this.agentSpeechStartedAt = Date.now();
             } else if (msg.type === 'interrupt') {
               console.log('[Client] Barge-in interrupt received; flushing audio queue.');
               this.flushPlaybackQueue();
@@ -103,6 +109,7 @@ export class SessionManager {
         sampleRate: 16000,
         echoCancellation: true,
         noiseSuppression: true,
+        autoGainControl: true,
       },
     });
 
@@ -124,9 +131,18 @@ export class SessionManager {
 
     this.workletNode.port.onmessage = (e) => {
       if (this.state === 'streaming' && this.ws?.readyState === WebSocket.OPEN) {
-        // Acoustic Echo Suppression: drop mic frames strictly while active audio sources are playing
-        const isAgentSpeaking = this.activeSources.length > 0;
-        if (isAgentSpeaking) {
+        // Echo-aware barge-in: the old code dropped ALL mic frames while any
+        // agent audio was queued, so answering before the greeting finished
+        // truncated "Yes, this is Alex speaking" to "with Alex.".
+        // Now: suppress only the first 400ms burst after agent start (where
+        // speaker echo is loudest), then keep streaming and let the
+        // server-side VAD + gateway echo check decide. This preserves
+        // barge-in while still killing the initial echo spike.
+        const now = Date.now();
+        const sinceAgentStart = now - this.agentSpeechStartedAt;
+        const sinceLastChunk = now - this.lastAgentChunkAt;
+        const agentActive = this.activeSources.length > 0;
+        if (agentActive && sinceAgentStart < 400 && sinceLastChunk < 600) {
           return;
         }
 
@@ -148,6 +164,11 @@ export class SessionManager {
 
   private playPcm16Chunk(base64: string): void {
     if (!this.audioContext) return;
+    const nowMs = Date.now();
+    if (this.activeSources.length === 0) {
+      this.agentSpeechStartedAt = nowMs;
+    }
+    this.lastAgentChunkAt = nowMs;
     try {
       const binary = atob(base64);
       const len = binary.length;
