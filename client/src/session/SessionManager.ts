@@ -124,8 +124,8 @@ export class SessionManager {
 
     this.workletNode.port.onmessage = (e) => {
       if (this.state === 'streaming' && this.ws?.readyState === WebSocket.OPEN) {
-        // Acoustic Echo Suppression: drop mic frames while the agent is speaking through speakers
-        const isAgentSpeaking = this.activeSources.length > 0 || (this.audioContext ? this.audioContext.currentTime < this.nextPlayTime - 0.1 : false);
+        // Acoustic Echo Suppression: drop mic frames strictly while active audio sources are playing
+        const isAgentSpeaking = this.activeSources.length > 0;
         if (isAgentSpeaking) {
           return;
         }
@@ -181,6 +181,9 @@ export class SessionManager {
         const idx = this.activeSources.indexOf(source);
         if (idx !== -1) {
           this.activeSources.splice(idx, 1);
+        }
+        if (this.activeSources.length === 0) {
+          this.nextPlayTime = 0;
         }
       };
     } catch (err) {
