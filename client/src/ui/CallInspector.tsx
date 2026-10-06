@@ -38,10 +38,10 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
       }
       activeTurn.userText = record.payload?.text;
     } else if (record.stage === 'agent_utterance') {
-      activeTurn.agentAttempted = record.payload?.attempted;
-      activeTurn.agentFinal = record.payload?.final;
-      activeTurn.phase = record.payload?.phase;
-      activeTurn.latencyMs = record.payload?.latency_ms;
+      activeTurn.agentAttempted = record.payload?.attempted || record.payload?.text;
+      activeTurn.agentFinal = record.payload?.final || record.payload?.text;
+      activeTurn.phase = record.payload?.phase || record.payload?.stage;
+      activeTurn.latencyMs = record.payload?.latency_ms || record.payload?.latencyMs;
       if (record.payload?.attempted && record.payload?.final && record.payload.attempted !== record.payload.final) {
         activeTurn.ruleBlocked = record.payload?.rule_violation || 'compliance_rewrite';
       }
