@@ -124,6 +124,12 @@ export class SessionManager {
 
     this.workletNode.port.onmessage = (e) => {
       if (this.state === 'streaming' && this.ws?.readyState === WebSocket.OPEN) {
+        // Acoustic Echo Suppression: drop mic frames while the agent is speaking through speakers
+        const isAgentSpeaking = this.activeSources.length > 0 || (this.audioContext ? this.audioContext.currentTime < this.nextPlayTime - 0.1 : false);
+        if (isAgentSpeaking) {
+          return;
+        }
+
         const { pcm16, tCapture } = e.data;
         const pcmArray = new Int16Array(pcm16);
         const frame = packAudioFrame(pcmArray, this.seq++, tCapture);
