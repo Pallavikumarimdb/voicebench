@@ -25,6 +25,7 @@ export interface Session {
   lastAgentSpeechEndAt?: number;
   /** Highest STT uttId seen (survives STT reconnects so numbering continues). */
   lastSttUttId?: number;
+}
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
