@@ -49,19 +49,28 @@ export class SessionManager {
       this.ws.binaryType = 'arraybuffer';
 
       this.ws.onopen = async () => {
-        // Send start control message
-        this.ws?.send(
-          JSON.stringify({
-            type: 'start',
-            mode,
-            srcLang,
-            tgtLang,
-            sampleRate: 16000,
-            config,
-          })
-        );
-        await this.initAudioCapture();
-        this.setState('streaming');
+        try {
+          // Send start control message
+          this.ws?.send(
+            JSON.stringify({
+              type: 'start',
+              mode,
+              srcLang,
+              tgtLang,
+              sampleRate: 16000,
+              config,
+            })
+          );
+          await this.initAudioCapture();
+          this.setState('streaming');
+        } catch (captureErr: any) {
+          console.error('[Client] Audio capture / mic init error:', captureErr);
+          const msg = captureErr?.name === 'NotAllowedError'
+            ? 'Microphone access denied. Please allow microphone permissions in your browser and try again.'
+            : (captureErr?.message || 'Failed to initialize audio capture');
+          this.callbacks.onError(msg);
+          this.stop();
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -176,7 +185,8 @@ export class SessionManager {
       for (let i = 0; i < len; i++) {
         bytes[i] = binary.charCodeAt(i);
       }
-      const int16 = new Int16Array(bytes.buffer);
+      const samplesCount = Math.floor(len / 2);
+      const int16 = new Int16Array(bytes.buffer, 0, samplesCount);
       const float32 = new Float32Array(int16.length);
       for (let i = 0; i < int16.length; i++) {
         float32[i] = int16[i] / 32768.0;

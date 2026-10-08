@@ -169,44 +169,35 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   // Agent said goodbye (end_call event): let farewell TTS finish, then auto-stop.
   const autoEndPendingRef = useRef(false);
 
-  // Helper: safe fetch with timeout, returns ok bool
-  const probeUrl = (url: string, timeoutMs = 2500): Promise<boolean> => {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-    return fetch(url, { signal: ctrl.signal })
-      .then((r) => r.ok)
-      .catch(() => false)
-      .finally(() => clearTimeout(timer));
+  // Helper: safe probe of unified /api/health from gateway
+  const runHealthCheck = async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch('/api/health', { signal });
+      if (res.ok) {
+        const data = await res.json();
+        const s = data.services || {};
+        setOllamaOk(s.ollama === true);
+        setTtsOk(s.tts === true);
+        setSttOk(s.stt === true);
+        setAgentOk(s.agent === true);
+        setOpenaiOk(s.openai === true);
+        return;
+      }
+    } catch {}
+    // If /api/health is down, mark as unknown
+    setOllamaOk(null);
+    setTtsOk(null);
+    setSttOk(null);
+    setAgentOk(null);
+    setOpenaiOk(null);
   };
 
-  // Probe all services once on mount, then every 30s
+  // Probe services once on mount, then every 20s
   useEffect(() => {
-    let cancelled = false;
-    const runProbes = async () => {
-      const [ollama, tts, stt, agent] = await Promise.all([
-        probeUrl('http://localhost:11434/api/tags'),
-        probeUrl('http://localhost:8004/health'),
-        probeUrl('http://localhost:8001/health'),
-        probeUrl('http://localhost:8003/healthz'),
-      ]);
-      if (cancelled) return;
-      setOllamaOk(ollama);
-      setTtsOk(tts);
-      setSttOk(stt);
-      setAgentOk(agent);
-      // OpenAI status comes from agent healthz
-      if (agent) {
-        fetch('http://localhost:8003/healthz')
-          .then((r) => r.json())
-          .then((j) => { if (!cancelled) setOpenaiOk(j?.llm?.openai === true); })
-          .catch(() => { if (!cancelled) setOpenaiOk(false); });
-      } else {
-        setOpenaiOk(false);
-      }
-    };
-    runProbes();
-    const interval = setInterval(runProbes, 30_000);
-    return () => { cancelled = true; clearInterval(interval); };
+    const ctrl = new AbortController();
+    runHealthCheck(ctrl.signal);
+    const interval = setInterval(() => runHealthCheck(ctrl.signal), 20_000);
+    return () => { ctrl.abort(); clearInterval(interval); };
   }, []);
 
   const selectBrain = (p: BrainProvider) => {
@@ -265,9 +256,12 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   }, [entries]);
 
   useEffect(() => {
+    const envWs = (import.meta as any).env?.VITE_GATEWAY_WS_URL;
     const gatewayProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const gatewayHost = window.location.hostname || 'localhost';
-    const gatewayUrl = `${gatewayProtocol}//${gatewayHost}:8443/session`;
+    const gatewayUrl = envWs || (window.location.port === '8443'
+      ? `${gatewayProtocol}//${window.location.host}/session`
+      : `${gatewayProtocol}//${gatewayHost}:8443/session`);
 
     sessionManagerRef.current = new SessionManager(gatewayUrl, {
       onStateChange: (newState) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HumanLabel, CallDetail } from '../data/types.ts';
 import { apiClient } from '../data/apiClient.ts';
 import { PageHeader, Badge, EmptyState } from './primitives.tsx';
@@ -36,14 +36,21 @@ export const LabelingScreen: React.FC<LabelingScreenProps> = () => {
   const [outcome, setOutcome] = useState<'PASS' | 'FAIL'>('PASS');
   const [notes, setNotes] = useState('');
 
+  const [activeCriterionIndex, setActiveCriterionIndex] = useState(0);
+  const allCallsRef = useRef<any[] | null>(null);
+
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       setLoadError(null);
       try {
-        const rows = await apiClient.getLabels();
+        const [rows, calls] = await Promise.all([
+          apiClient.getLabels(),
+          apiClient.getCalls(),
+        ]);
+        allCallsRef.current = calls;
         setLabels(rows);
-        if (rows.length > 0) loadTranscript(rows[0]);
+        if (rows.length > 0) loadTranscript(rows[0], calls);
       } catch (err: any) {
         setLoadError(err?.message || 'Failed to load labeling set.');
       } finally {
@@ -53,11 +60,12 @@ export const LabelingScreen: React.FC<LabelingScreenProps> = () => {
     loadData();
   }, []);
 
-  async function loadTranscript(label: HumanLabel) {
-    const allCalls = await apiClient.getCalls();
-    const matchingCall = allCalls.find(
-      (c) => c.persona === label.persona_id || c.id.includes(label.persona_id)
-    ) || allCalls[0];
+  async function loadTranscript(label: HumanLabel, cachedCalls?: any[]) {
+    const calls = cachedCalls || allCallsRef.current || (await apiClient.getCalls());
+    allCallsRef.current = calls;
+    const matchingCall = calls.find(
+      (c: any) => c.id === label.transcript_id || c.persona === label.persona_id || c.id.includes(label.persona_id)
+    ) || calls[0];
     if (matchingCall) {
       setActiveCall(await apiClient.getCallDetail(matchingCall.id));
     }
@@ -86,6 +94,7 @@ export const LabelingScreen: React.FC<LabelingScreenProps> = () => {
     setSelectedIndex(idx);
     setSaveStatus(null);
     setSaveError(null);
+    setActiveCriterionIndex(0);
     loadTranscript(labels[idx]);
   };
 
@@ -119,6 +128,38 @@ export const LabelingScreen: React.FC<LabelingScreenProps> = () => {
       setSaveError(res.error || 'Save failed — rating was not recorded.');
     }
   };
+
+  // Keyboard navigation: 1-5 sets current criterion score; Enter / Ctrl+Enter saves
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+
+      if (isInput) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          handleSave();
+        }
+        return;
+      }
+
+      if (e.key >= '1' && e.key <= '5') {
+        e.preventDefault();
+        const score = parseInt(e.key, 10);
+        const criterion = CRITERIA[activeCriterionIndex];
+        if (criterion) {
+          setScores((prev) => ({ ...prev, [criterion.key]: score }));
+          setActiveCriterionIndex((prev) => (prev + 1) % CRITERIA.length);
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeCriterionIndex, scores, outcome, notes, selectedIndex, labels]);
 
   const completedCount = labels.filter((l) => l.human_listening_score > 0).length;
 
@@ -201,27 +242,46 @@ export const LabelingScreen: React.FC<LabelingScreenProps> = () => {
           <div className="card" style={{ padding: 0 }}>
             <div className="card-header"><h3 className="card-title">Rating · 1–5</h3></div>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {CRITERIA.map((criterion, ci) => (
-                <div key={criterion.key}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{ci + 1}. {criterion.label}</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {[1, 2, 3, 4, 5].map((score) => (
-                      <button
-                        key={score}
-                        onClick={() => setScores({ ...scores, [criterion.key]: score })}
-                        style={{
-                          flex: 1, padding: '6px 0', borderRadius: 6,
-                          border: '1px solid var(--border-strong)', cursor: 'pointer', fontWeight: 650, fontSize: 13,
-                          background: scores[criterion.key] === score ? '#101828' : '#fff',
-                          color: scores[criterion.key] === score ? '#fff' : 'var(--text-secondary)',
-                        }}
-                      >
-                        {score}
-                      </button>
-                    ))}
+              {CRITERIA.map((criterion, ci) => {
+                const isActive = ci === activeCriterionIndex;
+                return (
+                  <div
+                    key={criterion.key}
+                    onClick={() => setActiveCriterionIndex(ci)}
+                    style={{
+                      cursor: 'pointer',
+                      padding: '4px 6px',
+                      borderRadius: 6,
+                      background: isActive ? 'var(--surface-2)' : 'transparent',
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {ci + 1}. {criterion.label}
+                      {isActive && <span style={{ fontSize: 10, color: 'var(--accent)' }}>● Active (1–5)</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <button
+                          key={score}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCriterionIndex(ci);
+                            setScores({ ...scores, [criterion.key]: score });
+                          }}
+                          style={{
+                            flex: 1, padding: '6px 0', borderRadius: 6,
+                            border: '1px solid var(--border-strong)', cursor: 'pointer', fontWeight: 650, fontSize: 13,
+                            background: scores[criterion.key] === score ? '#101828' : '#fff',
+                            color: scores[criterion.key] === score ? '#fff' : 'var(--text-secondary)',
+                          }}
+                        >
+                          {score}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               <div style={{ display: 'flex', gap: 8 }}>
                 {(['PASS', 'FAIL'] as const).map((o) => (

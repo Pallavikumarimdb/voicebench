@@ -593,6 +593,9 @@ wss.on('connection', (clientWs: WebSocket) => {
           if (session.sttWs && session.sttWs.readyState === WebSocket.OPEN) {
             session.sttWs.send(JSON.stringify({ type: 'session_stop' }));
           }
+          if (session.mode === 'agent') {
+            agentClient.endSession(sessionId).catch(() => {});
+          }
           sendJson(clientWs, { type: 'stopped' });
         }
       } catch (err) {
@@ -605,6 +608,9 @@ wss.on('connection', (clientWs: WebSocket) => {
     console.log(`[Gateway] Client disconnected: ${sessionId}`);
     clearSttReconnectTimer();
     metrics.activeSessions.dec();
+    if (session.mode === 'agent') {
+      agentClient.endSession(sessionId).catch(() => {});
+    }
     sessionManager.remove(sessionId);
   });
 
@@ -650,6 +656,9 @@ setInterval(() => {
     if (s.clientWs.readyState === WebSocket.OPEN) {
       s.clientWs.send(JSON.stringify({ type: 'error', code: 'SESSION_IDLE_TIMEOUT' }));
       s.clientWs.close(1001, 'Idle timeout');
+    }
+    if (s.mode === 'agent') {
+      agentClient.endSession(s.id).catch(() => {});
     }
     sessionManager.remove(s.id);
     metrics.activeSessions.dec();

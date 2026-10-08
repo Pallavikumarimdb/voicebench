@@ -163,6 +163,8 @@ async def session_end(req: SessionEndRequest):
     session_data = sessions.pop(session_id)
     audit_logger = session_data["audit_logger"]
     handoff = generate_handoff_summary(session_data["state"], audit_logger.log_path)
+    # Persist handoff event to the tamper-evident cryptographic audit log
+    audit_logger.append("handoff", handoff.model_dump())
     return {"status": "ended", "sessionId": session_id, "handoff": handoff.model_dump()}
 
 @app.post("/turn", response_model=BrainResponse)

@@ -19,9 +19,12 @@ export const TranslatePanel: React.FC = () => {
   const sessionManagerRef = useRef<SessionManager | null>(null);
 
   useEffect(() => {
+    const envWs = (import.meta as any).env?.VITE_GATEWAY_WS_URL;
     const gatewayProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const gatewayHost = window.location.hostname || 'localhost';
-    const gatewayUrl = `${gatewayProtocol}//${gatewayHost}:8443/session`;
+    const gatewayUrl = envWs || (window.location.port === '8443'
+      ? `${gatewayProtocol}//${window.location.host}/session`
+      : `${gatewayProtocol}//${gatewayHost}:8443/session`);
 
     sessionManagerRef.current = new SessionManager(gatewayUrl, {
       onStateChange: (newState) => setState(newState),
@@ -29,6 +32,11 @@ export const TranslatePanel: React.FC = () => {
       onMessage: (msg: GatewayMessage) => {
         if (msg.type === 'status') {
           setNotice(msg.status === 'stt_restored' ? null : (msg.message || 'Speech recognition reconnecting…'));
+          return;
+        }
+        if (msg.type === 'error') {
+          setError(msg.message || msg.code || 'Translation pipeline error');
+          sessionManagerRef.current?.stop();
           return;
         }
         if (msg.type === 'hud') {

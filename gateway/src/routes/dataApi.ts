@@ -29,22 +29,35 @@ const LABELING_DIR = path.resolve(REPO_ROOT, 'eval/agent/labeling');
 // Whitelisted directories to prevent path traversal
 const ALLOWED_DIRS = [AUDIT_DIR, RESULTS_DIR, PERSONAS_DIR, LABELING_DIR];
 
-// [C3] Restrict CORS origin; configurable via env, never wildcard in production
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
-
 export function isPathSafe(filePath: string): boolean {
   const resolved = path.resolve(filePath);
-  return ALLOWED_DIRS.some((dir) => resolved.startsWith(dir) && !resolved.includes('..'));
+  return ALLOWED_DIRS.some((dir) => {
+    const rel = path.relative(dir, resolved);
+    return !rel.startsWith('..') && !path.isAbsolute(rel);
+  });
 }
 
 export function isValidId(id: string): boolean {
   return /^[a-zA-Z0-9_\-]+$/.test(id);
 }
 
-function sendJson(res: http.ServerResponse, status: number, data: any) {
+export function getCorsOrigin(req: http.IncomingMessage): string {
+  const reqOrigin = req.headers.origin;
+  const configured = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:4173').split(',').map((s) => s.trim());
+  if (configured.includes('*')) return '*';
+  if (reqOrigin && configured.includes(reqOrigin)) return reqOrigin;
+  // Allow localhost/127.0.0.1 on any port for local development & preview
+  if (reqOrigin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(reqOrigin)) {
+    return reqOrigin;
+  }
+  return configured[0] || 'http://localhost:5173';
+}
+
+function sendJson(res: http.ServerResponse, status: number, data: any, req?: http.IncomingMessage) {
+  const origin = req ? getCorsOrigin(req) : (process.env.CORS_ORIGIN || 'http://localhost:5173');
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': CORS_ORIGIN,
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Vary': 'Origin',
@@ -85,13 +98,67 @@ export async function handleDataApi(
   const pathname = parsedUrl.pathname || '';
 
   if (req.method === 'OPTIONS') {
+    const origin = getCorsOrigin(req);
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': CORS_ORIGIN,
+      'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Vary': 'Origin',
     });
     res.end();
+    return true;
+  }
+
+  // 0. GET /api/health - Unified downstream microservice health check
+  if (req.method === 'GET' && pathname === '/api/health') {
+    const probe = async (probeUrlStr: string): Promise<boolean> => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 1800);
+      try {
+        const r = await fetch(probeUrlStr, { signal: ctrl.signal });
+        return r.ok;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(t);
+      }
+    };
+
+    const [sttUp, mtUp, agentUp, ttsUp] = await Promise.all([
+      probe(process.env.STT_HEALTH_URL || 'http://localhost:8001/health'),
+      probe(process.env.MT_HEALTH_URL || 'http://localhost:8002/health'),
+      probe(process.env.AGENT_HEALTH_URL || 'http://localhost:8003/healthz'),
+      probe(process.env.TTS_HEALTH_URL || 'http://localhost:8004/health'),
+    ]);
+
+    let ollamaUp = false;
+    let openaiUp = false;
+    if (agentUp) {
+      try {
+        const agentCtrl = new AbortController();
+        const at = setTimeout(() => agentCtrl.abort(), 1800);
+        const r = await fetch(process.env.AGENT_HEALTH_URL || 'http://localhost:8003/healthz', { signal: agentCtrl.signal });
+        clearTimeout(at);
+        if (r.ok) {
+          const j = await r.json();
+          ollamaUp = j?.llm?.local === true;
+          openaiUp = j?.llm?.openai === true;
+        }
+      } catch {}
+    }
+
+    sendJson(res, 200, {
+      status: 'ok',
+      services: {
+        gateway: true,
+        stt: sttUp,
+        mt: mtUp,
+        agent: agentUp,
+        tts: ttsUp,
+        ollama: ollamaUp,
+        openai: openaiUp,
+      },
+    }, req);
     return true;
   }
 
@@ -246,8 +313,29 @@ export async function handleDataApi(
 
     // No audit trail and no eval run: the record genuinely does not exist.
     if (auditLog.length === 0 && !runData) {
-      sendJson(res, 404, { error: `Call record '${id}' not found` });
+      sendJson(res, 404, { error: `Call record '${id}' not found` }, req);
       return true;
+    }
+
+    let handoff: any = null;
+    for (const entry of auditLog) {
+      if (entry.stage === 'handoff' && entry.payload) {
+        handoff = entry.payload;
+        break;
+      }
+    }
+    if (!handoff && runData) {
+      handoff = {
+        session_id: id,
+        identity_verified: Boolean(runData.hard_fail?.passed),
+        debtor_name: persona?.debtor_profile?.full_name || personaId || 'Simulated contact',
+        recommended_next_action: runData.promise_to_pay
+          ? `PAYMENT_MONITORING: Monitor payment schedule (${runData.promise_to_pay.amount ? '¥' + runData.promise_to_pay.amount.toLocaleString() : 'recorded'})`
+          : runData.hard_fail?.passed
+          ? 'FOLLOW_UP: Follow up in calling hours'
+          : 'VERIFICATION_FAILED: Retry contact during approved hours',
+        total_turns: runData.total_turns || (runData.latencies_ms?.length || 0),
+      };
     }
 
     sendJson(res, 200, {
@@ -258,7 +346,8 @@ export async function handleDataApi(
       auditLog,
       runData,
       persona,
-    });
+      handoff,
+    }, req);
     return true;
   }
 
@@ -431,10 +520,12 @@ export async function handleDataApi(
 
         // [M5] Strip CSV formula injection prefixes and escape for CSV safe writing
         const escapeVal = (v: any) => {
-          let str = String(v ?? '');
-          // Strip formula injection characters (=, +, -, @) from start of string
-          str = str.replace(/^[=+\-@]+/, '');
-          return str.includes(',') || str.includes('"') || str.includes('\n')
+          let str = String(v ?? '').trim();
+          // Strip formula injection characters (=, +, -, @, tab, cr) from start of string
+          str = str.replace(/^[=+\-@\t\r]+/, '');
+          // Sanitize internal newlines to keep single-row CSV integrity
+          str = str.replace(/[\r\n]+/g, ' ');
+          return str.includes(',') || str.includes('"')
             ? `"${str.replace(/"/g, '""')}"`
             : str;
         };

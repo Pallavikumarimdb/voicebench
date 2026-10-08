@@ -102,7 +102,6 @@ def test_stt_foundation():
 
     assert len(logged_events) > 0, "No ASR events generated from Japanese wav!"
     print(f"\n[M0 SUCCESS] Foundation check passed! Transcribed text: '{logged_events[0]['text']}'")
-    return logged_events
 
 if __name__ == "__main__":
     test_stt_foundation()

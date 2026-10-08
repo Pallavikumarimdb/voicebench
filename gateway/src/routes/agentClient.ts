@@ -38,4 +38,26 @@ export class AgentClient {
       clearTimeout(timeoutId);
     }
   }
+
+  async endSession(sessionId: string): Promise<any> {
+    const endUrl = this.serviceUrl.replace(/\/turn$/, '/session/end');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(endUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+        signal: controller.signal,
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (err: any) {
+      console.warn(`[AgentClient] Error ending session ${sessionId}:`, err?.message || err);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    return null;
+  }
 }

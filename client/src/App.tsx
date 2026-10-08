@@ -65,23 +65,26 @@ export const App: React.FC = () => {
     }
   };
 
+  const [selectedVariantFilter, setSelectedVariantFilter] = useState<string | null>(null);
+
   // Load calls list
-  useEffect(() => {
-    async function fetchCalls() {
-      setLoadingCalls(true);
-      setCallsError(null);
-      try {
-        setCalls(await apiClient.getCalls());
-        setApiOnline(true);
-      } catch (err: any) {
-        setCallsError(err?.message || 'Failed to load calls.');
-        setApiOnline(false);
-      } finally {
-        setLoadingCalls(false);
-      }
+  const fetchCalls = React.useCallback(async () => {
+    setLoadingCalls(true);
+    setCallsError(null);
+    try {
+      setCalls(await apiClient.getCalls());
+      setApiOnline(true);
+    } catch (err: any) {
+      setCallsError(err?.message || 'Failed to load calls.');
+      setApiOnline(false);
+    } finally {
+      setLoadingCalls(false);
     }
-    fetchCalls();
   }, []);
+
+  useEffect(() => {
+    fetchCalls();
+  }, [fetchCalls]);
 
   // Load detail when selectedCallId changes
   useEffect(() => {
@@ -129,6 +132,8 @@ export const App: React.FC = () => {
             onSelectCall={(id) => navigateTo('calls', id)}
             loading={loadingCalls}
             error={callsError}
+            initialVariantFilter={selectedVariantFilter}
+            onRefresh={fetchCalls}
           />
         )}
 
@@ -154,7 +159,8 @@ export const App: React.FC = () => {
 
         {activeTab === 'results' && (
           <ResultsViewer
-            onSelectVariantFilter={(_variant) => {
+            onSelectVariantFilter={(variant) => {
+              setSelectedVariantFilter(variant);
               navigateTo('calls', null);
             }}
             onNavigateToLabeling={() => navigateTo('label', null)}

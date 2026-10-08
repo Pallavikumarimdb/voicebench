@@ -24,5 +24,9 @@ describe('Data API Security & Path Traversal Guards', () => {
     assert.strictEqual(isPathSafe('../../package.json'), false);
     assert.strictEqual(isPathSafe('C:\\Windows\\System32\\cmd.exe'), false);
     assert.strictEqual(isPathSafe('/etc/passwd'), false);
+
+    // Prefix-collision attack (same prefix directory name bypass)
+    assert.strictEqual(isPathSafe('services/agent/audit_logs_fake/leak.jsonl'), false);
+    assert.strictEqual(isPathSafe('eval/agent/personas_malicious/leak.yaml'), false);
   });
 });

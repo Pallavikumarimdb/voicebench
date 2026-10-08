@@ -8,6 +8,8 @@ interface CallListProps {
   onSelectCall: (id: string) => void;
   loading?: boolean;
   error?: string | null;
+  initialVariantFilter?: string | null;
+  onRefresh?: () => void;
 }
 
 function shortId(id: string) {
@@ -15,21 +17,37 @@ function shortId(id: string) {
   return `${id.slice(0, 8)}…${id.slice(-6)}`;
 }
 
-export const CallList: React.FC<CallListProps> = ({ calls, onSelectCall, loading = false, error = null }) => {
+export const CallList: React.FC<CallListProps> = ({
+  calls,
+  onSelectCall,
+  loading = false,
+  error = null,
+  initialVariantFilter = null,
+  onRefresh,
+}) => {
   const [search, setSearch] = useState('');
   const [filterSource, setFilterSource] = useState('all');
-  const [filterVariant, setFilterVariant] = useState('all');
+  const [filterVariant, setFilterVariant] = useState(initialVariantFilter || 'all');
   const [filterHardFail, setFilterHardFail] = useState('all');
   const [filterBlocked, setFilterBlocked] = useState('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'turns'>('newest');
 
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  // Sync if initialVariantFilter changes
+  React.useEffect(() => {
+    if (initialVariantFilter) {
+      setFilterVariant(initialVariantFilter);
+      setPage(1);
+    }
+  }, [initialVariantFilter]);
 
   const personas = useMemo(() => Array.from(new Set(calls.map((c) => c.persona))).sort(), [calls]);
   const [filterPersona, setFilterPersona] = useState('all');
 
   const filteredCalls = useMemo(() => {
-    return calls.filter((c) => {
+    const list = calls.filter((c) => {
       if (search && !c.id.toLowerCase().includes(search.toLowerCase()) && !c.persona.toLowerCase().includes(search.toLowerCase())) {
         return false;
       }
@@ -42,13 +60,20 @@ export const CallList: React.FC<CallListProps> = ({ calls, onSelectCall, loading
       if (filterBlocked === 'none' && c.hasComplianceBlock) return false;
       return true;
     });
-  }, [calls, search, filterSource, filterVariant, filterPersona, filterHardFail, filterBlocked]);
+
+    return list.sort((a, b) => {
+      if (sortBy === 'oldest') return (a.timestamp || 0) - (b.timestamp || 0);
+      if (sortBy === 'turns') return (b.totalTurns || 0) - (a.totalTurns || 0);
+      return (b.timestamp || 0) - (a.timestamp || 0); // newest first
+    });
+  }, [calls, search, filterSource, filterVariant, filterPersona, filterHardFail, filterBlocked, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCalls.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
   const paginatedCalls = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    const start = (safePage - 1) * pageSize;
     return filteredCalls.slice(start, start + pageSize);
-  }, [filteredCalls, page]);
+  }, [filteredCalls, safePage]);
 
   const fails = calls.filter((c) => c.hardFailPassed === false).length;
   const blocked = calls.filter((c) => c.hasComplianceBlock).length;
@@ -66,6 +91,11 @@ export const CallList: React.FC<CallListProps> = ({ calls, onSelectCall, loading
             <Badge tone="neutral">{filteredCalls.length} of {calls.length}</Badge>
             {fails > 0 && <Badge tone="danger">{fails} hard-fails</Badge>}
             {blocked > 0 && <Badge tone="warning">{blocked} guard hits</Badge>}
+            {onRefresh && (
+              <button className="btn btn-sm" onClick={onRefresh} title="Reload calls from server">
+                Refresh
+              </button>
+            )}
           </>
         }
       />
@@ -104,6 +134,11 @@ export const CallList: React.FC<CallListProps> = ({ calls, onSelectCall, loading
           <option value="all">Guard: all</option>
           <option value="blocked">Intercepted</option>
           <option value="none">Clean</option>
+        </select>
+        <select className="select" style={selectStyle} value={sortBy} onChange={(e) => { setSortBy(e.target.value as any); setPage(1); }}>
+          <option value="newest">Sort: Newest</option>
+          <option value="oldest">Sort: Oldest</option>
+          <option value="turns">Sort: Most turns</option>
         </select>
       </div>
 
@@ -167,9 +202,9 @@ export const CallList: React.FC<CallListProps> = ({ calls, onSelectCall, loading
 
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 12 }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Page {page} of {totalPages}</span>
-              <button className="btn btn-sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
-              <button className="btn btn-sm" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+              <span style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Page {safePage} of {totalPages}</span>
+              <button className="btn btn-sm" disabled={safePage <= 1} onClick={() => setPage(Math.max(1, safePage - 1))}>Previous</button>
+              <button className="btn btn-sm" disabled={safePage >= totalPages} onClick={() => setPage(Math.min(totalPages, safePage + 1))}>Next</button>
             </div>
           )}
         </>
