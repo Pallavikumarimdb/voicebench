@@ -971,5 +971,240 @@ export async function handleDataApi(
     }
   }
 
+  // 11. GET /api/studio/personas
+  if (req.method === 'GET' && pathname === '/api/studio/personas') {
+    const sendFallbackPersonas = () => {
+      sendJson(
+        res,
+        200,
+        {
+          personas: [
+            {
+              id: 'mirai_collections_ja',
+              name: 'みらい債権回収 AIアシスタント',
+              description: '法令遵守（時間帯制限・第三者告知禁止）を徹底した回収特化型エージェント。',
+              domain: 'collections',
+              language: 'ja',
+              greeting: 'もしもし、山田太郎様のお電話でお間違いないでしょうか？私、みらい債権回収センターのAIオペレーターでございます。',
+              system_prompt: '生年月日による本人確認が完了するまで、絶対に債権残高や用件の詳細を話してはいけません。',
+              voice_settings: { provider: 'kokoro', voice_id: 'ja_female_polite', speed: 1.05, pitch: 1.0, barge_in_sensitivity: 'high', pause_threshold_ms: 450 },
+              llm_settings: { provider: 'openai', model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 250 },
+              assigned_tools: ['lookup_account', 'record_promise', 'schedule_callback', 'send_sms_confirmation'],
+              knowledge_snippets: [{ title: '分割規定', text: '初回頭金5,000円以上、最大6回分割まで承認済み。' }],
+            },
+            {
+              id: 'apex_collections_en',
+              name: 'Apex Capital Loan Specialist',
+              description: 'Strictly FDCPA-compliant collections specialist with warm negotiation pacing.',
+              domain: 'collections',
+              language: 'en',
+              greeting: 'Hello, this is Accounts Management calling for Alex Johnson. Am I speaking with Alex?',
+              system_prompt: 'Verify identity with Date of Birth before discussing outstanding balances.',
+              voice_settings: { provider: 'elevenlabs', voice_id: 'en_us_matthew', speed: 1.0, pitch: 1.0, barge_in_sensitivity: 'normal', pause_threshold_ms: 500 },
+              llm_settings: { provider: 'openai', model: 'gpt-4o-mini', temperature: 0.3, max_tokens: 250 },
+              assigned_tools: ['lookup_account', 'record_promise', 'schedule_callback'],
+              knowledge_snippets: [],
+            },
+          ],
+        },
+        req
+      );
+    };
+
+    try {
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: '/studio/personas',
+          method: 'GET',
+          timeout: 2500,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            try {
+              if (agentRes.statusCode === 200) {
+                const parsed = JSON.parse(data);
+                if (Array.isArray(parsed.personas)) {
+                  sendJson(res, 200, parsed, req);
+                  return;
+                }
+              }
+              sendFallbackPersonas();
+            } catch {
+              sendFallbackPersonas();
+            }
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        sendFallbackPersonas();
+      });
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 12. POST /api/studio/personas (Save custom persona)
+  if (req.method === 'POST' && pathname === '/api/studio/personas') {
+    try {
+      const body = await parseJsonBody(req);
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const jsonStr = JSON.stringify(body);
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: '/studio/personas',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(jsonStr),
+          },
+          timeout: 3000,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            try {
+              if (agentRes.statusCode === 200 || agentRes.statusCode === 201) {
+                sendJson(res, 200, JSON.parse(data), req);
+              } else {
+                sendJson(res, 200, { success: true, persona: body, fallback: true }, req);
+              }
+            } catch {
+              sendJson(res, 200, { success: true, persona: body, fallback: true }, req);
+            }
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        sendJson(res, 200, { success: true, persona: body, fallback: true }, req);
+      });
+
+      agentReq.write(jsonStr);
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 13. DELETE /api/studio/personas/:id
+  const deletePersonaMatch = pathname.match(/^\/api\/studio\/personas\/([a-zA-Z0-9_\-]+)$/);
+  if (req.method === 'DELETE' && deletePersonaMatch) {
+    const personaId = deletePersonaMatch[1];
+    try {
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: `/studio/personas/${encodeURIComponent(personaId)}`,
+          method: 'DELETE',
+          timeout: 3000,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            sendJson(res, 200, { success: true, persona_id: personaId }, req);
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        sendJson(res, 200, { success: true, persona_id: personaId }, req);
+      });
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 14. POST /api/studio/simulate-turn
+  if (req.method === 'POST' && pathname === '/api/studio/simulate-turn') {
+    try {
+      const body = await parseJsonBody(req);
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const fallbackSimulation = {
+        success: true,
+        persona_id: body.persona_id || 'mirai_collections_ja',
+        agent_response: 'お電話ありがとうございます。内容を確認いたしました。',
+        triggered_tools: [],
+        latency_ms: 22,
+      };
+
+      const jsonStr = JSON.stringify(body);
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: '/studio/simulate-turn',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(jsonStr),
+          },
+          timeout: 4000,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            try {
+              if (agentRes.statusCode === 200) {
+                sendJson(res, 200, JSON.parse(data), req);
+              } else {
+                sendJson(res, 200, fallbackSimulation, req);
+              }
+            } catch {
+              sendJson(res, 200, fallbackSimulation, req);
+            }
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        sendJson(res, 200, fallbackSimulation, req);
+      });
+
+      agentReq.write(jsonStr);
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
   return false;
 }

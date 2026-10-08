@@ -30,6 +30,7 @@ from .compliance.guard import ComplianceGuard
 from .generalized import GeneralizedVoiceAgent
 from .llm import llm_client
 from .tool_registry import tool_registry, ToolDefinition, ToolParameter
+from .agent_studio import studio_manager
 
 app = FastAPI(title="Voice Agent Service", version="0.1.0")
 
@@ -319,4 +320,44 @@ def delete_tool(name: str):
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Custom tool '{name}' not found or cannot delete builtin tool")
     return {"success": True, "name": name}
+
+# Agent Studio & Persona Endpoints
+@app.get("/studio/personas")
+def list_studio_personas():
+    """Lists all configured and seeded voice agent personas."""
+    return {"personas": studio_manager.list_personas()}
+
+@app.get("/studio/personas/{persona_id}")
+def get_studio_persona(persona_id: str):
+    """Retrieves a single voice agent persona definition."""
+    p = studio_manager.get_persona(persona_id)
+    if not p:
+        raise HTTPException(status_code=404, detail=f"Persona '{persona_id}' not found")
+    return p.to_dict()
+
+@app.post("/studio/personas")
+def save_studio_persona(payload: Dict[str, Any]):
+    """Creates or updates a custom voice agent persona."""
+    persona = studio_manager.save_persona(payload)
+    return {"success": True, "persona": persona.to_dict()}
+
+@app.delete("/studio/personas/{persona_id}")
+def delete_studio_persona(persona_id: str):
+    """Deletes a customized voice agent persona."""
+    deleted = studio_manager.delete_persona(persona_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Persona '{persona_id}' not found")
+    return {"success": True, "persona_id": persona_id}
+
+@app.post("/studio/simulate-turn")
+def simulate_studio_turn(payload: Dict[str, Any]):
+    """Runs a simulated turn with a persona to preview responses and tools without full audio."""
+    pid = payload.get("persona_id", "mirai_collections_ja")
+    msg = payload.get("message", "")
+    history = payload.get("history", [])
+    res = studio_manager.simulate_turn(pid, msg, history)
+    if not res.get("success", False):
+        raise HTTPException(status_code=404, detail=res.get("error", "Simulation failed"))
+    return res
+
 

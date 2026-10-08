@@ -1,0 +1,23 @@
+{
+  "tools": [
+    {
+      "name": "crm_webhook_custom",
+      "description": "Syncs lead status to Salesforce",
+      "tool_type": "webhook",
+      "url": "https://webhook.site/test",
+      "method": "POST",
+      "headers": {},
+      "timeout_ms": 3000,
+      "parameters": [
+        {
+          "name": "lead_id",
+          "type": "string",
+          "description": "",
+          "required": true,
+          "enum": null
+        }
+      ],
+      "filler_phrase": null
+    }
+  ]
+}

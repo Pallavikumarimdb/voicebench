@@ -215,3 +215,43 @@ export interface ToolExecutionResult {
   status_code?: number;
 }
 
+export interface StudioPersonaItem {
+  id: string;
+  name: string;
+  description: string;
+  domain: 'collections' | 'screening' | 'kyc' | 'custom' | string;
+  language: 'ja' | 'en';
+  system_prompt: string;
+  greeting: string;
+  voice_settings: {
+    provider: string;
+    voice_id: string;
+    speed: number;
+    pitch: number;
+    barge_in_sensitivity: string;
+    pause_threshold_ms: number;
+  };
+  llm_settings: {
+    provider: string;
+    model: string;
+    temperature: number;
+    max_tokens: number;
+  };
+  knowledge_snippets: Array<{ title: string; text: string }>;
+  assigned_tools: string[];
+  created_at: number;
+  updated_at: number;
+}
+
+export interface SimulationResult {
+  success: boolean;
+  persona_id: string;
+  agent_response: string;
+  triggered_tools: string[];
+  latency_ms: number;
+  voice_settings?: any;
+  llm_model?: string;
+  error?: string;
+}
+
+

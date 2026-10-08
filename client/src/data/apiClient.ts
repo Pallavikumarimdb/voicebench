@@ -14,6 +14,8 @@ import {
   AuditVerifyResult,
   ToolItem,
   ToolExecutionResult,
+  StudioPersonaItem,
+  SimulationResult,
 } from './types.ts';
 import {
   parseSummaryCsv,
@@ -154,6 +156,36 @@ export class ApiClient {
   async deleteTool(name: string): Promise<{ success: boolean }> {
     return fetchJson(`/api/tools/${encodeURIComponent(name)}`, {
       method: 'DELETE',
+    });
+  }
+
+  /** Studio Personas list */
+  async getStudioPersonas(): Promise<{ personas: StudioPersonaItem[] }> {
+    return fetchJson('/api/studio/personas');
+  }
+
+  /** Save or update a Studio Persona */
+  async saveStudioPersona(persona: Partial<StudioPersonaItem>): Promise<{ success: boolean; persona: StudioPersonaItem }> {
+    return fetchJson('/api/studio/personas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(persona),
+    });
+  }
+
+  /** Delete a Studio Persona */
+  async deleteStudioPersona(id: string): Promise<{ success: boolean }> {
+    return fetchJson(`/api/studio/personas/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /** Run instant turn simulation with persona */
+  async simulateTurn(persona_id: string, message: string): Promise<SimulationResult> {
+    return fetchJson('/api/studio/simulate-turn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ persona_id, message }),
     });
   }
 }
