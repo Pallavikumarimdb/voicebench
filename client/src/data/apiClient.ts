@@ -12,6 +12,8 @@ import {
   HumanLabel,
   EvalVariantSummary,
   AuditVerifyResult,
+  ToolItem,
+  ToolExecutionResult,
 } from './types.ts';
 import {
   parseSummaryCsv,
@@ -123,6 +125,36 @@ export class ApiClient {
     } catch (err: any) {
       return { success: false, error: err?.message || 'Label save failed and was not recorded.' };
     }
+  }
+
+  /** Tools and Webhooks schema list */
+  async getTools(): Promise<{ tools: ToolItem[]; openai_schema: any[] }> {
+    return fetchJson('/api/tools');
+  }
+
+  /** Execute a tool test run */
+  async executeTool(name: string, args: Record<string, any>): Promise<ToolExecutionResult> {
+    return fetchJson('/api/tools/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, arguments: args }),
+    });
+  }
+
+  /** Register or update a custom webhook */
+  async registerTool(tool: Partial<ToolItem>): Promise<{ success: boolean; tool: ToolItem }> {
+    return fetchJson('/api/tools', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tool),
+    });
+  }
+
+  /** Delete a custom webhook tool */
+  async deleteTool(name: string): Promise<{ success: boolean }> {
+    return fetchJson(`/api/tools/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
   }
 }
 

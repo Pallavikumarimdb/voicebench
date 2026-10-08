@@ -217,10 +217,58 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
                     {expandedTools.has(idx) && (
                       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {turn.toolCalls.map((tc, tIdx) => (
-                          <div key={tIdx} className="mono" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
-                            <div style={{ fontWeight: 700 }}>{tc.tool}()</div>
-                            <div style={{ color: 'var(--text-secondary)', marginTop: 2 }}>args: {JSON.stringify(tc.args)}</div>
-                            <div style={{ color: 'var(--text-secondary)' }}>result: {JSON.stringify(tc.result)}</div>
+                          <div
+                            key={tIdx}
+                            style={{
+                              background: '#090d16',
+                              border: '1px solid #1e293b',
+                              borderRadius: 8,
+                              padding: '10px 12px',
+                              color: '#f8fafc',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 6,
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ color: '#38bdf8', fontSize: 13 }}>⚡</span>
+                                <span className="mono" style={{ fontWeight: 700, fontSize: 13, color: '#38bdf8' }}>
+                                  {tc.tool}()
+                                </span>
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  background: tc.result?.success !== false ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                  color: tc.result?.success !== false ? '#34d399' : '#f87171',
+                                }}
+                              >
+                                {tc.result?.success !== false ? 'SUCCESS' : 'FAILED'}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
+                              <div>
+                                <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+                                  Arguments
+                                </div>
+                                <pre className="mono" style={{ margin: 0, padding: 6, background: '#020617', borderRadius: 4, fontSize: 11, color: '#cbd5e1', overflowX: 'auto', maxHeight: 80 }}>
+                                  {JSON.stringify(tc.args, null, 2)}
+                                </pre>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+                                  Returned Data
+                                </div>
+                                <pre className="mono" style={{ margin: 0, padding: 6, background: '#020617', borderRadius: 4, fontSize: 11, color: '#93c5fd', overflowX: 'auto', maxHeight: 80 }}>
+                                  {JSON.stringify(tc.result, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>

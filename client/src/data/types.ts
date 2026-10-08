@@ -184,3 +184,34 @@ export interface HumanLabel {
   human_outcome_pass_fail: 'PASS' | 'FAIL';
   notes: string;
 }
+
+export interface ToolParam {
+  name: string;
+  type: string;
+  description: string;
+  required: boolean;
+  enum?: string[];
+}
+
+export interface ToolItem {
+  name: string;
+  description: string;
+  tool_type: 'builtin' | 'webhook';
+  url?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  timeout_ms?: number;
+  parameters: ToolParam[];
+  filler_phrase?: string;
+  secret_key?: string;
+}
+
+export interface ToolExecutionResult {
+  success: boolean;
+  tool: string;
+  data?: any;
+  error?: string;
+  latency_ms: number;
+  status_code?: number;
+}
+

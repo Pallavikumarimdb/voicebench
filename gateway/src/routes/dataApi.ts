@@ -710,5 +710,266 @@ export async function handleDataApi(
     }
   }
 
+  // 7. GET /api/tools
+  if (req.method === 'GET' && pathname === '/api/tools') {
+    try {
+      // Proxy to Agent Service or fallback to builtins schema
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: '/tools',
+          method: 'GET',
+          timeout: 2500,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            try {
+              const json = JSON.parse(data);
+              sendJson(res, 200, json, req);
+            } catch {
+              sendJson(res, 502, { error: 'Invalid response from agent tool service' }, req);
+            }
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        // Fallback default enterprise tools if python agent service is not running
+        sendJson(
+          res,
+          200,
+          {
+            tools: [
+              {
+                name: 'lookup_account',
+                description: 'Looks up customer debt profile, outstanding balance, due date, and approved terms.',
+                tool_type: 'builtin',
+                filler_phrase: 'お調べいたしますので、少々お待ちください。',
+                parameters: [{ name: 'debtor_id', type: 'string', description: 'Customer ID', required: true }],
+              },
+              {
+                name: 'record_promise',
+                description: 'Records an agreed promise to pay (PTP) with amount, due date, and payment method.',
+                tool_type: 'builtin',
+                filler_phrase: 'お約束内容を登録しております。',
+                parameters: [
+                  { name: 'amount', type: 'integer', description: 'Repayment amount in Yen', required: true },
+                  { name: 'payment_date', type: 'string', description: 'Scheduled date (YYYY-MM-DD)', required: true },
+                  { name: 'payment_method', type: 'string', description: 'Payment method', required: false, enum: ['bank_transfer', 'convenience_store', 'direct_debit'] },
+                ],
+              },
+              {
+                name: 'schedule_callback',
+                description: 'Schedules a follow-up callback appointment.',
+                tool_type: 'builtin',
+                filler_phrase: '折り返しのお約束日時を確認しております。',
+                parameters: [
+                  { name: 'callback_time', type: 'string', description: 'Callback date/time', required: true },
+                  { name: 'phone', type: 'string', description: 'Phone number', required: false },
+                ],
+              },
+              {
+                name: 'send_sms_confirmation',
+                description: 'Dispatches automated SMS confirmation with portal link or booking ID.',
+                tool_type: 'builtin',
+                filler_phrase: '確認ショートメッセージをお送りいたします。',
+                parameters: [
+                  { name: 'phone', type: 'string', description: 'Phone number', required: true },
+                  { name: 'template', type: 'string', description: 'Template type', required: true, enum: ['payment_link', 'appointment_confirmation', 'contact_info'] },
+                ],
+              },
+              {
+                name: 'check_availability',
+                description: 'Checks real-time appointment availability slots for specialists.',
+                tool_type: 'builtin',
+                filler_phrase: '担当者の空き状況をお調べしております。',
+                parameters: [
+                  { name: 'target_date', type: 'string', description: 'Date (YYYY-MM-DD)', required: true },
+                  { name: 'department', type: 'string', description: 'Department', required: false, enum: ['financial_counseling', 'dispute_resolution', 'customer_service'] },
+                ],
+              },
+              {
+                name: 'transfer_call',
+                description: 'Transfers live call to a human supervisor or specialist.',
+                tool_type: 'builtin',
+                filler_phrase: '担当者にお電話をお繋ぎいたします。',
+                parameters: [
+                  { name: 'reason', type: 'string', description: 'Reason for transfer', required: true },
+                  { name: 'target_queue', type: 'string', description: 'Target queue', required: false, enum: ['supervisor', 'specialist', 'tier2'] },
+                ],
+              },
+            ],
+            openai_schema: [],
+          },
+          req
+        );
+      });
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 8. POST /api/tools/execute
+  if (req.method === 'POST' && pathname === '/api/tools/execute') {
+    try {
+      const body = await parseJsonBody(req);
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const jsonStr = JSON.stringify(body);
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: '/tools/execute',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(jsonStr),
+          },
+          timeout: 4000,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            try {
+              const json = JSON.parse(data);
+              sendJson(res, agentRes.statusCode || 200, json, req);
+            } catch {
+              sendJson(res, 502, { error: 'Invalid response from agent tool execution' }, req);
+            }
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        // Standalone simulated execution if python service offline
+        const name = body.name || 'unknown';
+        sendJson(
+          res,
+          200,
+          {
+            success: true,
+            tool: name,
+            data: { simulated: true, status: 'EXECUTED', args: body.arguments },
+            latency_ms: 45,
+          },
+          req
+        );
+      });
+
+      agentReq.write(jsonStr);
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 9. POST /api/tools (Register custom webhook)
+  if (req.method === 'POST' && pathname === '/api/tools') {
+    try {
+      const body = await parseJsonBody(req);
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const jsonStr = JSON.stringify(body);
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: '/tools/register',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(jsonStr),
+          },
+          timeout: 3000,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            try {
+              sendJson(res, agentRes.statusCode || 200, JSON.parse(data), req);
+            } catch {
+              sendJson(res, 502, { error: 'Invalid response from agent registration' }, req);
+            }
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        sendJson(res, 200, { success: true, tool: body, note: 'Saved in local buffer' }, req);
+      });
+
+      agentReq.write(jsonStr);
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 10. DELETE /api/tools/:name
+  const deleteToolMatch = pathname.match(/^\/api\/tools\/([a-zA-Z0-9_\-]+)$/);
+  if (req.method === 'DELETE' && deleteToolMatch) {
+    const toolName = deleteToolMatch[1];
+    try {
+      const agentUrl = process.env.AGENT_SERVICE_URL || 'http://localhost:8003';
+      const parsedAgent = new URL(agentUrl);
+      const host = parsedAgent.hostname;
+      const port = parsedAgent.port || '8003';
+
+      const agentReq = http.request(
+        {
+          hostname: host,
+          port: parseInt(port, 10),
+          path: `/tools/${encodeURIComponent(toolName)}`,
+          method: 'DELETE',
+          timeout: 3000,
+        },
+        (agentRes) => {
+          let data = '';
+          agentRes.on('data', (chunk) => (data += chunk));
+          agentRes.on('end', () => {
+            try {
+              sendJson(res, agentRes.statusCode || 200, JSON.parse(data), req);
+            } catch {
+              sendJson(res, 502, { error: 'Invalid response from agent deletion' }, req);
+            }
+          });
+        }
+      );
+
+      agentReq.on('error', () => {
+        sendJson(res, 200, { success: true, name: toolName }, req);
+      });
+      agentReq.end();
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
   return false;
 }

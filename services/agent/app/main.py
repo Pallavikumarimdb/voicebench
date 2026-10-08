@@ -29,6 +29,7 @@ from .state import CallState
 from .compliance.guard import ComplianceGuard
 from .generalized import GeneralizedVoiceAgent
 from .llm import llm_client
+from .tool_registry import tool_registry, ToolDefinition, ToolParameter
 
 app = FastAPI(title="Voice Agent Service", version="0.1.0")
 
@@ -256,3 +257,66 @@ async def turn(req: BrainRequest) -> BrainResponse:
             events=brain_events,
             metrics=brain_metrics
         )
+
+# Tool & Webhook Endpoints
+@app.get("/tools")
+def list_tools():
+    """Returns all registered enterprise and custom webhook tools with schemas."""
+    return {
+        "tools": tool_registry.list_tools(),
+        "openai_schema": tool_registry.get_openai_tools_schema(),
+    }
+
+@app.post("/tools/execute")
+def execute_tool(payload: Dict[str, Any]):
+    """Executes a tool with arguments and returns latency, status, and payload."""
+    name = payload.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Missing 'name' field in payload")
+    arguments = payload.get("arguments", {})
+    session_state = payload.get("session_state", {})
+    return tool_registry.execute(name, arguments, session_state)
+
+@app.post("/tools/register")
+def register_tool(payload: Dict[str, Any]):
+    """Registers or updates a custom webhook tool."""
+    name = payload.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Missing 'name' field")
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="Missing 'url' field for webhook")
+
+    params = [
+        ToolParameter(
+            name=p["name"],
+            type=p.get("type", "string"),
+            description=p.get("description", ""),
+            required=p.get("required", True),
+            enum=p.get("enum"),
+        )
+        for p in payload.get("parameters", [])
+    ]
+    tool = ToolDefinition(
+        name=name,
+        description=payload.get("description", ""),
+        tool_type="webhook",
+        url=url,
+        method=payload.get("method", "POST"),
+        headers=payload.get("headers", {}),
+        timeout_ms=payload.get("timeout_ms", 3000),
+        parameters=params,
+        filler_phrase=payload.get("filler_phrase"),
+        secret_key=payload.get("secret_key"),
+    )
+    tool_registry.save_custom_tool(tool)
+    return {"success": True, "tool": tool.to_dict()}
+
+@app.delete("/tools/{name}")
+def delete_tool(name: str):
+    """Deletes a custom webhook tool."""
+    deleted = tool_registry.delete_custom_tool(name)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Custom tool '{name}' not found or cannot delete builtin tool")
+    return {"success": True, "name": name}
+
