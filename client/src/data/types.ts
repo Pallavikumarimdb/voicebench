@@ -254,4 +254,84 @@ export interface SimulationResult {
   error?: string;
 }
 
+export interface AnalyticsOverview {
+  totalCalls: number;
+  completedCalls: number;
+  escalatedCalls: number;
+  failedCalls: number;
+  avgHandleTimeSec: number;
+  totalDurationMin: number;
+  firstCallResolutionRate: number;
+  promiseToPayRate: number;
+  complianceGuardrailRate: number;
+  avgJudgeScore: number;
+  totalCostUsd: number;
+  avgCostPerCallUsd: number;
+  avgCostPerMinuteUsd: number;
+  humanAgentEquivalentCostUsd: number;
+  estimatedNetSavingsUsd: number;
+  savingsPercentage: number;
+  latencyP50Ms: number;
+  latencyP95Ms: number;
+  latencyP99Ms: number;
+}
+
+export interface AnalyticsTimeSeriesPoint {
+  date: string;
+  calls: number;
+  completed: number;
+  escalated: number;
+  avgDurationSec: number;
+  costUsd: number;
+}
+
+export interface AnalyticsDisposition {
+  disposition: string;
+  count: number;
+  percentage: number;
+}
+
+export interface AnalyticsPersonaStat {
+  persona: string;
+  totalCalls: number;
+  resolutionRate: number;
+  avgTurns: number;
+  avgDurationSec: number;
+  avgScore: number;
+  costUsd: number;
+}
+
+export interface AnalyticsLatencyWaterfall {
+  sttP50: number;
+  sttP95: number;
+  llmP50: number;
+  llmP95: number;
+  ttsP50: number;
+  ttsP95: number;
+  networkP50: number;
+  networkP95: number;
+  e2eP50: number;
+  e2eP95: number;
+}
+
+export interface AnalyticsCostLedger {
+  sttCostUsd: number;
+  llmCostUsd: number;
+  ttsCostUsd: number;
+  telephonyCostUsd: number;
+  totalCostUsd: number;
+  humanEquivalentCostUsd: number;
+  savingsUsd: number;
+  savingsPct: number;
+}
+
+export interface AnalyticsData {
+  overview: AnalyticsOverview;
+  timeSeries: AnalyticsTimeSeriesPoint[];
+  dispositions: AnalyticsDisposition[];
+  personas: AnalyticsPersonaStat[];
+  waterfall: AnalyticsLatencyWaterfall;
+  costLedger: AnalyticsCostLedger;
+}
+
 

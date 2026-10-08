@@ -8,6 +8,7 @@ import { LabelingScreen } from './ui/LabelingScreen.tsx';
 import { TranslatePanel } from './ui/TranslatePanel.tsx';
 import { ToolsPanel } from './ui/ToolsPanel.tsx';
 import { AgentStudio } from './ui/AgentStudio.tsx';
+import { AnalyticsDashboard } from './ui/AnalyticsDashboard.tsx';
 import { apiClient } from './data/apiClient.ts';
 import { CallSummaryItem, CallDetail } from './data/types.ts';
 
@@ -35,6 +36,9 @@ export const App: React.FC = () => {
         setSelectedCallId(null);
       } else if (path === '/studio') {
         setActiveTab('studio');
+        setSelectedCallId(null);
+      } else if (path === '/analytics') {
+        setActiveTab('analytics');
         setSelectedCallId(null);
       } else if (path === '/tools') {
         setActiveTab('tools');
@@ -173,6 +177,10 @@ export const App: React.FC = () => {
             }}
             onNavigateToLabeling={() => navigateTo('label', null)}
           />
+        )}
+
+        {activeTab === 'analytics' && (
+          <AnalyticsDashboard />
         )}
 
         {activeTab === 'label' && (

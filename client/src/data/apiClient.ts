@@ -16,6 +16,7 @@ import {
   ToolExecutionResult,
   StudioPersonaItem,
   SimulationResult,
+  AnalyticsData,
 } from './types.ts';
 import {
   parseSummaryCsv,
@@ -187,6 +188,12 @@ export class ApiClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ persona_id, message }),
     });
+  }
+
+  /** Fetch enterprise analytics and dispositions data */
+  async getAnalytics(params?: { range?: string; persona?: string; variant?: string }): Promise<AnalyticsData> {
+    const qs = params ? new URLSearchParams(Object.entries(params).filter(([_, v]) => v) as any).toString() : '';
+    return fetchJson(`/api/analytics${qs ? `?${qs}` : ''}`);
   }
 }
 
