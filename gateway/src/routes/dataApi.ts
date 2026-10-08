@@ -14,6 +14,20 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
+function getRecorderModule(): {
+  generateSyntheticCallAudio: (id: string, auditLog: any[], outDir: string) => string;
+  computePeaks: (pcmBuffer: Buffer, targetPoints?: number) => number[];
+} | null {
+  try {
+    return require('../recorder');
+  } catch {
+    try {
+      return require('../recorder.ts');
+    } catch {
+      return null;
+    }
+  }
+}
 
 // Root directories
 const currentDir =
@@ -25,9 +39,10 @@ const AUDIT_DIR = path.resolve(REPO_ROOT, 'services/agent/audit_logs');
 const RESULTS_DIR = path.resolve(REPO_ROOT, 'eval/agent/results');
 const PERSONAS_DIR = path.resolve(REPO_ROOT, 'eval/agent/personas');
 const LABELING_DIR = path.resolve(REPO_ROOT, 'eval/agent/labeling');
+export const RECORDINGS_DIR = path.resolve(REPO_ROOT, 'services/agent/recordings');
 
 // Whitelisted directories to prevent path traversal
-const ALLOWED_DIRS = [AUDIT_DIR, RESULTS_DIR, PERSONAS_DIR, LABELING_DIR];
+const ALLOWED_DIRS = [AUDIT_DIR, RESULTS_DIR, PERSONAS_DIR, LABELING_DIR, RECORDINGS_DIR];
 
 export function isPathSafe(filePath: string): boolean {
   const resolved = path.resolve(filePath);
@@ -255,6 +270,135 @@ export async function handleDataApi(
     }
   }
 
+  // 2a. GET /api/calls/:id/audio/download
+  const audioDownloadMatch = pathname.match(/^\/api\/calls\/([a-zA-Z0-9_\-]+)\/audio\/download$/);
+  if (req.method === 'GET' && audioDownloadMatch) {
+    const id = audioDownloadMatch[1];
+    let audioPath = path.join(RECORDINGS_DIR, `${id}.wav`);
+    const rec = getRecorderModule();
+    if (!fs.existsSync(audioPath) && rec) {
+      const auditFile = path.join(AUDIT_DIR, `${id}.jsonl`);
+      if (fs.existsSync(auditFile)) {
+        try {
+          const lines = fs.readFileSync(auditFile, 'utf-8').split('\n').filter(Boolean);
+          const auditLog = lines.map((l) => JSON.parse(l));
+          audioPath = rec.generateSyntheticCallAudio(id, auditLog, RECORDINGS_DIR);
+        } catch {}
+      }
+    }
+    if (!fs.existsSync(audioPath) || !isPathSafe(audioPath)) {
+      sendJson(res, 404, { error: 'Call audio recording not found' }, req);
+      return true;
+    }
+    const stat = fs.statSync(audioPath);
+    const origin = getCorsOrigin(req);
+    res.writeHead(200, {
+      'Content-Type': 'audio/wav',
+      'Content-Length': stat.size,
+      'Content-Disposition': `attachment; filename="${id}.wav"`,
+      'Access-Control-Allow-Origin': origin,
+    });
+    fs.createReadStream(audioPath).pipe(res);
+    return true;
+  }
+
+  // 2b. GET /api/calls/:id/audio - Stream with HTTP Range requests for visual scrubbing
+  const audioStreamMatch = pathname.match(/^\/api\/calls\/([a-zA-Z0-9_\-]+)\/audio$/);
+  if (req.method === 'GET' && audioStreamMatch) {
+    const id = audioStreamMatch[1];
+    let audioPath = path.join(RECORDINGS_DIR, `${id}.wav`);
+    const rec = getRecorderModule();
+    if (!fs.existsSync(audioPath) && rec) {
+      const auditFile = path.join(AUDIT_DIR, `${id}.jsonl`);
+      if (fs.existsSync(auditFile)) {
+        try {
+          const lines = fs.readFileSync(auditFile, 'utf-8').split('\n').filter(Boolean);
+          const auditLog = lines.map((l) => JSON.parse(l));
+          audioPath = rec.generateSyntheticCallAudio(id, auditLog, RECORDINGS_DIR);
+        } catch {}
+      }
+    }
+    if (!fs.existsSync(audioPath) || !isPathSafe(audioPath)) {
+      sendJson(res, 404, { error: 'Call audio recording not found' }, req);
+      return true;
+    }
+
+    const stat = fs.statSync(audioPath);
+    const total = stat.size;
+    const origin = getCorsOrigin(req);
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      const chunksize = end - start + 1;
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${total}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'audio/wav',
+        'Access-Control-Allow-Origin': origin,
+      });
+      fs.createReadStream(audioPath, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': total,
+        'Accept-Ranges': 'bytes',
+        'Content-Type': 'audio/wav',
+        'Access-Control-Allow-Origin': origin,
+      });
+      fs.createReadStream(audioPath).pipe(res);
+    }
+    return true;
+  }
+
+  // 2c. GET /api/calls/:id/waveform - Amplitude envelope peaks
+  const waveformMatch = pathname.match(/^\/api\/calls\/([a-zA-Z0-9_\-]+)\/waveform$/);
+  if (req.method === 'GET' && waveformMatch) {
+    const id = waveformMatch[1];
+    const peaksFile = path.join(RECORDINGS_DIR, `${id}_peaks.json`);
+    let audioPath = path.join(RECORDINGS_DIR, `${id}.wav`);
+
+    if (fs.existsSync(peaksFile) && isPathSafe(peaksFile)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(peaksFile, 'utf-8'));
+        sendJson(res, 200, data, req);
+        return true;
+      } catch {}
+    }
+
+    const rec = getRecorderModule();
+
+    if (!fs.existsSync(audioPath) && rec) {
+      const auditFile = path.join(AUDIT_DIR, `${id}.jsonl`);
+      if (fs.existsSync(auditFile)) {
+        try {
+          const lines = fs.readFileSync(auditFile, 'utf-8').split('\n').filter(Boolean);
+          const auditLog = lines.map((l) => JSON.parse(l));
+          audioPath = rec.generateSyntheticCallAudio(id, auditLog, RECORDINGS_DIR);
+        } catch {}
+      }
+    }
+
+    if (fs.existsSync(audioPath) && isPathSafe(audioPath)) {
+      try {
+        const buf = fs.readFileSync(audioPath);
+        const pcmData = buf.slice(44);
+        const peaks = rec ? rec.computePeaks(pcmData, 140) : Array(140).fill(0.1);
+        const durationSec = Math.max(1, Math.round(pcmData.length / 4 / 16000));
+        const summary = { durationSec, sampleRate: 16000, channels: 2, peaks };
+        fs.writeFileSync(peaksFile, JSON.stringify(summary));
+        sendJson(res, 200, summary, req);
+        return true;
+      } catch {}
+    }
+
+    sendJson(res, 404, { error: 'Waveform data not available' }, req);
+    return true;
+  }
+
   // 2. GET /api/calls/:id
   if (req.method === 'GET' && pathname.startsWith('/api/calls/')) {
     const id = pathname.replace('/api/calls/', '').trim();
@@ -338,6 +482,15 @@ export async function handleDataApi(
       };
     }
 
+    const audioFile = path.join(RECORDINGS_DIR, `${id}.wav`);
+    const hasAudio = fs.existsSync(audioFile) || Boolean(auditLog.length > 0);
+    const audio = {
+      hasAudio,
+      audioUrl: `/api/calls/${encodeURIComponent(id)}/audio`,
+      downloadUrl: `/api/calls/${encodeURIComponent(id)}/audio/download`,
+      waveformUrl: `/api/calls/${encodeURIComponent(id)}/waveform`,
+    };
+
     sendJson(res, 200, {
       id,
       source: id.startsWith('sim_') ? 'sim' : 'live',
@@ -347,6 +500,7 @@ export async function handleDataApi(
       runData,
       persona,
       handoff,
+      audio,
     }, req);
     return true;
   }

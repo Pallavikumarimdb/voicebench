@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CallDetail } from '../data/types.ts';
 import { HashChainBadge, HardFailBadge, ComplianceBadge, SourceBadge } from './Badges.tsx';
 import { PageHeader, Badge, EmptyState } from './primitives.tsx';
+import { AudioPlayer } from './AudioPlayer.tsx';
 
 interface CallInspectorProps {
   call: CallDetail;
@@ -79,6 +80,30 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
     });
   };
 
+  const [activeSeekSec, setActiveSeekSec] = useState<number | null>(null);
+
+  const startTime = auditRecords[0]?.ts || 0;
+  const turnMarkers = useMemo(() => {
+    return turns.map((t, idx) => {
+      const rec = auditRecords.find(
+        (r) =>
+          (r.stage === 'user_utterance' && (r.payload?.turn === t.turnNumber || idx === 0)) ||
+          (r.stage === 'agent_utterance' && r.payload?.turn === t.turnNumber)
+      );
+      let sec = 0;
+      if (rec && startTime > 0 && rec.ts >= startTime) {
+        sec = Math.max(0, (rec.ts - startTime) / 1000);
+      } else {
+        sec = idx * 4.5;
+      }
+      return {
+        turnNumber: t.turnNumber,
+        sec,
+        speaker: (t.userText ? 'user' : 'agent') as 'user' | 'agent',
+      };
+    });
+  }, [turns, auditRecords, startTime]);
+
   const blockedTurns = turns.filter((t) => t.ruleBlocked).length;
 
   return (
@@ -106,6 +131,15 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
         )}
       </div>
 
+      {/* Dual-Channel Waveform Audio Player */}
+      <AudioPlayer
+        callId={call.id}
+        audioUrl={call.audio?.audioUrl}
+        downloadUrl={call.audio?.downloadUrl}
+        turnMarkers={turnMarkers}
+        activeSeekSec={activeSeekSec}
+      />
+
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(300px, 1fr)', gap: 16, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 650 }}>Timeline</div>
@@ -115,7 +149,28 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
             return (
               <div key={idx} className={`timeline-turn ${hasBlock ? 'flagged' : ''}`} style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <span className="mono" style={{ fontWeight: 700, fontSize: 12 }}>T{turn.turnNumber}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const marker = turnMarkers.find((m) => m.turnNumber === turn.turnNumber);
+                      if (marker) setActiveSeekSec(marker.sec);
+                    }}
+                    style={{
+                      background: 'var(--bg-subtle)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '4px',
+                      padding: '2px 7px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      color: 'var(--text-primary)',
+                    }}
+                    title={`Jump audio to Turn ${turn.turnNumber}`}
+                  >
+                    <span style={{ color: 'var(--accent)', fontSize: 10 }}>▶</span>
+                    <span className="mono" style={{ fontWeight: 700, fontSize: 12 }}>T{turn.turnNumber}</span>
+                  </button>
                   {turn.phase && <Badge tone="neutral">{turn.phase}</Badge>}
                   {hasBlock && <ComplianceBadge blocked rule={turn.ruleBlocked} />}
                   {turn.latencyMs !== undefined && (

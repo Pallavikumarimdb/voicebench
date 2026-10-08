@@ -48,6 +48,7 @@ function toCallDetail(raw: any): CallDetail {
     runData: raw.runData || null,
     persona: personaObj,
     hashChain,
+    audio: raw.audio || null,
   };
 }
 
@@ -61,6 +62,15 @@ export class ApiClient {
   async getCallDetail(id: string): Promise<CallDetail> {
     const raw = await fetchJson(`/api/calls/${encodeURIComponent(id)}`);
     return toCallDetail(raw);
+  }
+
+  /** Fetches computed waveform peaks for an audio recording. */
+  async getWaveform(id: string): Promise<import('./types.ts').WaveformData | null> {
+    try {
+      return await fetchJson(`/api/calls/${encodeURIComponent(id)}/waveform`);
+    } catch {
+      return null;
+    }
   }
 
   /** Evaluation summary tables and Pareto curve, parsed from result files. */

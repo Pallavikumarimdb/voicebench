@@ -131,6 +131,21 @@ export interface PersonaDefinition {
   expected_good_outcomes: string[];
 }
 
+export interface CallAudioInfo {
+  hasRecording: boolean;
+  audioUrl: string;
+  downloadUrl: string;
+  waveformUrl: string;
+  format: string;
+}
+
+export interface WaveformData {
+  durationSec: number;
+  sampleRate: number;
+  channels: number;
+  peaks: number[];
+}
+
 export interface CallDetail {
   id: string;
   source: CallSource;
@@ -141,6 +156,7 @@ export interface CallDetail {
   runData?: CallRun | null;
   persona?: PersonaDefinition | null;
   hashChain: AuditVerifyResult;
+  audio?: CallAudioInfo | null;
 }
 
 export interface EvalVariantSummary {

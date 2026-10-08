@@ -9,7 +9,8 @@ import { createSTTConnection, STTMessage } from './routes/sttClient';
 import { MTClient } from './routes/mtClient';
 import { AgentClient } from './routes/agentClient';
 import { TTSClient } from './routes/ttsClient';
-import { handleDataApi } from './routes/dataApi';
+import { handleDataApi, RECORDINGS_DIR } from './routes/dataApi';
+import { CallRecorder } from './recorder';
 import { metrics } from './metrics';
 
 dotenv.config();
@@ -328,6 +329,7 @@ wss.on('connection', (clientWs: WebSocket) => {
                   res.text,
                   (chunkSeq, chunkBuf) => {
                     if (session.isAgentSpeaking) {
+                      session.recorder?.recordAgent(chunkBuf);
                       sendJson(clientWs, {
                         type: 'agent_audio_chunk',
                         uttId: currentUttId,
@@ -487,6 +489,9 @@ wss.on('connection', (clientWs: WebSocket) => {
           // Client sent audio before start control message - drop safely
           return;
         }
+        if (buf.length > 13) {
+          session.recorder?.recordCaller(buf.subarray(13));
+        }
         // Forward through backpressure policy
         forwardAudioFrame(session, buf);
       }
@@ -508,6 +513,7 @@ wss.on('connection', (clientWs: WebSocket) => {
             session.config = sanitizeAgentConfig(msg.config) as Record<string, any>;
           }
           session.isStarted = true;
+          session.recorder = new CallRecorder(session.id, RECORDINGS_DIR);
           connectSTT();
           console.log(`[Gateway] Session started: ${sessionId} (mode: ${session.mode}, srcLang: ${session.srcLang})`);
           sendJson(clientWs, { type: 'started', sessionId, mode: session.mode, config: session.config });
@@ -554,6 +560,7 @@ wss.on('connection', (clientWs: WebSocket) => {
                 greeting,
                 (chunkSeq, chunkBuf) => {
                   if (session.isAgentSpeaking) {
+                    session.recorder?.recordAgent(chunkBuf);
                     sendJson(clientWs, {
                       type: 'agent_audio_chunk',
                       uttId: greetUttId,
@@ -590,6 +597,8 @@ wss.on('connection', (clientWs: WebSocket) => {
         } else if (msg.type === 'stop') {
           session.isStarted = false;
           clearSttReconnectTimer();
+          session.recorder?.finalize();
+          session.recorder = undefined;
           if (session.sttWs && session.sttWs.readyState === WebSocket.OPEN) {
             session.sttWs.send(JSON.stringify({ type: 'session_stop' }));
           }
@@ -607,6 +616,8 @@ wss.on('connection', (clientWs: WebSocket) => {
   clientWs.on('close', () => {
     console.log(`[Gateway] Client disconnected: ${sessionId}`);
     clearSttReconnectTimer();
+    session.recorder?.finalize();
+    session.recorder = undefined;
     metrics.activeSessions.dec();
     if (session.mode === 'agent') {
       agentClient.endSession(sessionId).catch(() => {});
@@ -660,6 +671,8 @@ setInterval(() => {
     if (s.mode === 'agent') {
       agentClient.endSession(s.id).catch(() => {});
     }
+    s.recorder?.finalize();
+    s.recorder = undefined;
     sessionManager.remove(s.id);
     metrics.activeSessions.dec();
   }

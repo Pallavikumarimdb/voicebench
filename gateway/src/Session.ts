@@ -25,6 +25,8 @@ export interface Session {
   lastAgentSpeechEndAt?: number;
   /** Highest STT uttId seen (survives STT reconnects so numbering continues). */
   lastSttUttId?: number;
+  /** Dual-channel audio recorder for call inspector playback and download. */
+  recorder?: import('./recorder').CallRecorder;
 }
 
 export class SessionManager {
