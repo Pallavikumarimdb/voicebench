@@ -334,4 +334,30 @@ export interface AnalyticsData {
   costLedger: AnalyticsCostLedger;
 }
 
+export interface PhoneNumberConfig {
+  phoneNumber: string;
+  friendlyName: string;
+  personaId: string;
+  language: 'ja' | 'en';
+  provider: 'twilio' | 'telnyx' | 'sip_trunk';
+  status: 'active' | 'standby';
+  configuredAt: number;
+}
+
+export interface TelephonyCallSession {
+  callSid: string;
+  streamSid: string;
+  direction: 'inbound' | 'outbound';
+  fromPhone: string;
+  toPhone: string;
+  personaId: string;
+  status: 'ringing' | 'in-progress' | 'completed' | 'failed';
+  startedAt: number;
+  endedAt: number | null;
+  durationSec: number;
+  turns: number;
+  transcript: Array<{ speaker: 'caller' | 'agent'; text: string; ts: number }>;
+  disposition?: string;
+}
+
 

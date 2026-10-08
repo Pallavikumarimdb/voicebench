@@ -9,9 +9,13 @@ import { createSTTConnection, STTMessage } from './routes/sttClient';
 import { MTClient } from './routes/mtClient';
 import { AgentClient } from './routes/agentClient';
 import { TTSClient } from './routes/ttsClient';
-import { handleDataApi, RECORDINGS_DIR } from './routes/dataApi';
+import { handleDataApi, RECORDINGS_DIR, getTelephonyModule, setTelephonyManager } from './routes/dataApi';
 import { CallRecorder } from './recorder';
 import { metrics } from './metrics';
+import { telephonyManager, setCallRecorderClass } from './telephony/telephonyBridge';
+
+setTelephonyManager(telephonyManager);
+setCallRecorderClass(CallRecorder);
 
 dotenv.config();
 
@@ -120,14 +124,24 @@ const server = http.createServer(async (req, res) => {
   res.end();
 });
 
-// WebSocket Server for client sessions
+// WebSocket Server for client sessions and telephony media streams
 const wss = new WebSocketServer({ noServer: true });
+const telephonyWss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
   const { pathname } = new URL(request.url || '', `http://${request.headers.host}`);
   if (pathname === '/session') {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
+    });
+  } else if (pathname === '/telephony/stream') {
+    telephonyWss.handleUpgrade(request, socket, head, (ws) => {
+      const tm = getTelephonyModule()?.telephonyManager;
+      if (tm) {
+        tm.handleMediaStreamConnection(ws, RECORDINGS_DIR);
+      } else {
+        ws.close(1011, 'Telephony unavailable');
+      }
     });
   } else {
     socket.destroy();

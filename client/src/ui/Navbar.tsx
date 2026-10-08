@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from './primitives.tsx';
 
-export type ActiveTab = 'live' | 'studio' | 'tools' | 'calls' | 'results' | 'label' | 'translate' | 'analytics';
+export type ActiveTab = 'live' | 'studio' | 'tools' | 'telephony' | 'calls' | 'results' | 'label' | 'translate' | 'analytics';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -16,6 +16,7 @@ const GROUPS: { section: string; items: { id: ActiveTab; label: string; desc: st
       { id: 'live', label: 'Live call', desc: 'Run & monitor' },
       { id: 'studio', label: 'Agent studio', desc: 'No-code builder' },
       { id: 'tools', label: 'Tools', desc: 'Webhooks & APIs' },
+      { id: 'telephony', label: 'Telephony', desc: 'Twilio & SIP PSTN' },
       { id: 'translate', label: 'Translate', desc: 'Realtime demo' },
     ],
   },
@@ -39,6 +40,7 @@ const TITLES: Record<ActiveTab, { crumb: string; title: string }> = {
   live: { crumb: 'Build', title: 'Live call' },
   studio: { crumb: 'Build', title: 'Agent Studio' },
   tools: { crumb: 'Build', title: 'Tools & Webhooks' },
+  telephony: { crumb: 'Build', title: 'Telephony & SIP Bridge' },
   translate: { crumb: 'Build', title: 'Translate' },
   calls: { crumb: 'Review', title: 'Calls' },
   label: { crumb: 'Review', title: 'Labeling' },
@@ -115,8 +117,8 @@ export const Topbar: React.FC<{ activeTab: ActiveTab; apiOnline: boolean; onHome
   onSelectTab,
 }) => {
   const t = TITLES[activeTab];
-  const ids: ActiveTab[] = ['live', 'studio', 'tools', 'calls', 'analytics', 'results', 'label', 'translate'];
-  const labels: Record<ActiveTab, string> = { live: 'Live', studio: 'Studio', tools: 'Tools', calls: 'Calls', analytics: 'Analytics', results: 'Results', label: 'Label', translate: 'Translate' };
+  const ids: ActiveTab[] = ['live', 'studio', 'tools', 'telephony', 'calls', 'analytics', 'results', 'label', 'translate'];
+  const labels: Record<ActiveTab, string> = { live: 'Live', studio: 'Studio', tools: 'Tools', telephony: 'Telephony', calls: 'Calls', analytics: 'Analytics', results: 'Results', label: 'Label', translate: 'Translate' };
   return (
     <div className="topbar">
       <button onClick={onHome} className="btn btn-sm" style={{ padding: '4px 10px' }}>

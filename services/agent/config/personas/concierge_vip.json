@@ -1,0 +1,30 @@
+{
+  "id": "concierge_vip",
+  "name": "VIP Hotel Concierge",
+  "description": "Luxury booking and table reservation assistant",
+  "domain": "custom",
+  "language": "en",
+  "system_prompt": "Assist guests with dining, transfer, and suite amenities.",
+  "greeting": "Good afternoon, VIP concierge at your service.",
+  "voice_settings": {
+    "provider": "elevenlabs",
+    "voice_id": "en_us_matthew",
+    "speed": 1.05,
+    "pitch": 1.0,
+    "barge_in_sensitivity": "normal",
+    "pause_threshold_ms": 500
+  },
+  "llm_settings": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "temperature": 0.3,
+    "max_tokens": 250
+  },
+  "knowledge_snippets": [],
+  "assigned_tools": [
+    "check_availability",
+    "send_sms_confirmation"
+  ],
+  "created_at": 1791483757722,
+  "updated_at": 1791483757722
+}

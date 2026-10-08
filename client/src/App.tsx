@@ -9,6 +9,7 @@ import { TranslatePanel } from './ui/TranslatePanel.tsx';
 import { ToolsPanel } from './ui/ToolsPanel.tsx';
 import { AgentStudio } from './ui/AgentStudio.tsx';
 import { AnalyticsDashboard } from './ui/AnalyticsDashboard.tsx';
+import { TelephonyStudio } from './ui/TelephonyStudio.tsx';
 import { apiClient } from './data/apiClient.ts';
 import { CallSummaryItem, CallDetail } from './data/types.ts';
 
@@ -36,6 +37,9 @@ export const App: React.FC = () => {
         setSelectedCallId(null);
       } else if (path === '/studio') {
         setActiveTab('studio');
+        setSelectedCallId(null);
+      } else if (path === '/telephony') {
+        setActiveTab('telephony');
         setSelectedCallId(null);
       } else if (path === '/analytics') {
         setActiveTab('analytics');
@@ -193,6 +197,10 @@ export const App: React.FC = () => {
 
         {activeTab === 'studio' && (
           <AgentStudio />
+        )}
+
+        {activeTab === 'telephony' && (
+          <TelephonyStudio />
         )}
 
         {activeTab === 'tools' && (

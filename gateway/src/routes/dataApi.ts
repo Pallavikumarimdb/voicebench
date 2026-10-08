@@ -14,19 +14,60 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
+function getDynamicRequire(): any {
+  if (typeof require !== 'undefined') return require;
+  try {
+    const mod = (process as any).getBuiltinModule ? (process as any).getBuiltinModule('node:module') : null;
+    if (mod && mod.createRequire) {
+      return mod.createRequire(path.join(process.cwd(), 'dummy.js'));
+    }
+  } catch {}
+  return (id: string) => {
+    try {
+      return eval('require')(id);
+    } catch {
+      return null;
+    }
+  };
+}
+
+const dynamicRequire = getDynamicRequire();
+
 function getRecorderModule(): {
   generateSyntheticCallAudio: (id: string, auditLog: any[], outDir: string) => string;
   computePeaks: (pcmBuffer: Buffer, targetPoints?: number) => number[];
 } | null {
   try {
-    return require('../recorder');
+    return dynamicRequire('../recorder');
   } catch {
     try {
-      return require('../recorder.ts');
+      return dynamicRequire('../recorder.ts');
     } catch {
       return null;
     }
   }
+}
+
+let registeredTelephonyManager: any = null;
+
+export function setTelephonyManager(tm: any) {
+  registeredTelephonyManager = tm;
+}
+
+export function getTelephonyModule(): {
+  telephonyManager: any;
+} | null {
+  if (registeredTelephonyManager) {
+    return { telephonyManager: registeredTelephonyManager };
+  }
+  try {
+    const tm = dynamicRequire('../telephony/telephonyBridge');
+    if (tm?.telephonyManager) {
+      registeredTelephonyManager = tm.telephonyManager;
+      return tm;
+    }
+  } catch {}
+  return null;
 }
 
 // Root directories robustly located whether run from repo root or gateway package
@@ -1291,7 +1332,8 @@ export async function handleDataApi(
                 }
               } catch {}
             }
-            const durationSec = sawTs && lastTs > firstTs ? Math.max(10, Math.round((lastTs - firstTs) / 1000)) : Math.max(15, turns * 12);
+            const measuredSec = sawTs && lastTs > firstTs ? Math.round((lastTs - firstTs) / 1000) : 0;
+            const durationSec = measuredSec > 0 && measuredSec <= 900 ? Math.max(10, measuredSec) : Math.max(15, Math.round(turns * 12.5));
             const persona = sessionId.includes('cooperative') ? 'cooperative' : sessionId.includes('hostile') ? 'hostile' : 'live_caller';
 
             rawCalls.push({
@@ -1320,6 +1362,22 @@ export async function handleDataApi(
       }
       if (variantFilter && variantFilter !== 'all') {
         filtered = filtered.filter((c) => c.variant === variantFilter);
+      }
+
+      const rangeFilter = typeof query.range === 'string' ? query.range : '7d';
+      const now = Date.now();
+      if (rangeFilter === '24h') {
+        const cut = now - 86400000;
+        const inRange = filtered.filter((c) => c.timestamp >= cut);
+        if (inRange.length > 0) filtered = inRange;
+      } else if (rangeFilter === '7d') {
+        const cut = now - 7 * 86400000;
+        const inRange = filtered.filter((c) => c.timestamp >= cut);
+        if (inRange.length > 0) filtered = inRange;
+      } else if (rangeFilter === '30d') {
+        const cut = now - 30 * 86400000;
+        const inRange = filtered.filter((c) => c.timestamp >= cut);
+        if (inRange.length > 0) filtered = inRange;
       }
 
       const totalCalls = filtered.length || 1;
@@ -1398,7 +1456,6 @@ export async function handleDataApi(
 
       // Time series: generate 7 historical bins
       const timeSeries: any[] = [];
-      const now = Date.now();
       for (let i = 6; i >= 0; i--) {
         const binStart = now - (i + 1) * 86400000;
         const binEnd = now - i * 86400000;
@@ -1513,6 +1570,94 @@ export async function handleDataApi(
       sendJson(res, 500, { error: err.message }, req);
       return true;
     }
+  }
+
+  // 17. GET /api/telephony/numbers - Provisioned phone numbers list
+  if (req.method === 'GET' && pathname === '/api/telephony/numbers') {
+    const tm = getTelephonyModule()?.telephonyManager;
+    const numbers = tm ? tm.getPhoneNumbers() : [];
+    sendJson(res, 200, { numbers }, req);
+    return true;
+  }
+
+  // 18. POST /api/telephony/numbers - Configure phone number mapping
+  if (req.method === 'POST' && pathname === '/api/telephony/numbers') {
+    try {
+      const body = await parseJsonBody(req);
+      const tm = getTelephonyModule()?.telephonyManager;
+      if (!tm) throw new Error('Telephony manager unavailable');
+      const saved = tm.savePhoneNumber(body);
+      sendJson(res, 200, { success: true, number: saved }, req);
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 19. GET /api/telephony/calls - Active and recent PSTN / SIP calls
+  if (req.method === 'GET' && pathname === '/api/telephony/calls') {
+    const tm = getTelephonyModule()?.telephonyManager;
+    const calls = tm ? tm.getAllCalls() : [];
+    sendJson(res, 200, { calls }, req);
+    return true;
+  }
+
+  // 20. POST /api/telephony/calls/outbound - Dispatch automated outbound call
+  if (req.method === 'POST' && pathname === '/api/telephony/calls/outbound') {
+    try {
+      const body = await parseJsonBody(req);
+      if (!body.toPhone) {
+        sendJson(res, 400, { error: 'toPhone parameter is required' }, req);
+        return true;
+      }
+      const tm = getTelephonyModule()?.telephonyManager;
+      if (!tm) throw new Error('Telephony manager unavailable');
+      const call = tm.dispatchOutboundCall({
+        toPhone: body.toPhone,
+        fromPhone: body.fromPhone,
+        personaId: body.personaId,
+      });
+      sendJson(res, 200, { success: true, call }, req);
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 21. POST /api/telephony/calls/:id/hangup - Programmatically hang up call
+  const hangupMatch = pathname.match(/^\/api\/telephony\/calls\/([a-zA-Z0-9_\-]+)\/hangup$/);
+  if (req.method === 'POST' && hangupMatch) {
+    const callSid = hangupMatch[1];
+    const tm = getTelephonyModule()?.telephonyManager;
+    const hungUp = tm ? tm.terminateCall(callSid, 'operator_hangup') : false;
+    sendJson(res, 200, { success: hungUp, callSid }, req);
+    return true;
+  }
+
+  // 22. GET / POST /api/telephony/twilio/incoming - TwiML webhook for Twilio Voice
+  if ((req.method === 'POST' || req.method === 'GET') && pathname === '/api/telephony/twilio/incoming') {
+    const host = req.headers.host || 'localhost:8443';
+    const proto = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
+    const streamUrl = `${proto}://${host}/telephony/stream`;
+
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Mizuki" language="ja-JP">ボイスAIサービスに接続しています。</Say>
+  <Connect>
+    <Stream url="${streamUrl}">
+      <Parameter name="source" value="twilio_voice_inbound" />
+    </Stream>
+  </Connect>
+</Response>`;
+
+    res.writeHead(200, {
+      'Content-Type': 'text/xml; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.end(twiml);
+    return true;
   }
 
   return false;

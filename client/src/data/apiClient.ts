@@ -17,6 +17,8 @@ import {
   StudioPersonaItem,
   SimulationResult,
   AnalyticsData,
+  PhoneNumberConfig,
+  TelephonyCallSession,
 } from './types.ts';
 import {
   parseSummaryCsv,
@@ -194,6 +196,41 @@ export class ApiClient {
   async getAnalytics(params?: { range?: string; persona?: string; variant?: string }): Promise<AnalyticsData> {
     const qs = params ? new URLSearchParams(Object.entries(params).filter(([_, v]) => v) as any).toString() : '';
     return fetchJson(`/api/analytics${qs ? `?${qs}` : ''}`);
+  }
+
+  /** Telephony: get provisioned phone numbers */
+  async getTelephonyNumbers(): Promise<{ numbers: PhoneNumberConfig[] }> {
+    return fetchJson('/api/telephony/numbers');
+  }
+
+  /** Telephony: save phone number config */
+  async saveTelephonyNumber(config: Partial<PhoneNumberConfig>): Promise<{ success: boolean; number: PhoneNumberConfig }> {
+    return fetchJson('/api/telephony/numbers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+  }
+
+  /** Telephony: get active and recent PSTN / SIP calls */
+  async getTelephonyCalls(): Promise<{ calls: TelephonyCallSession[] }> {
+    return fetchJson('/api/telephony/calls');
+  }
+
+  /** Telephony: dispatch automated outbound call */
+  async dispatchOutboundCall(toPhone: string, personaId?: string, fromPhone?: string): Promise<{ success: boolean; call: TelephonyCallSession }> {
+    return fetchJson('/api/telephony/calls/outbound', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toPhone, personaId, fromPhone }),
+    });
+  }
+
+  /** Telephony: programmatically hang up active call */
+  async hangupTelephonyCall(callSid: string): Promise<{ success: boolean }> {
+    return fetchJson(`/api/telephony/calls/${encodeURIComponent(callSid)}/hangup`, {
+      method: 'POST',
+    });
   }
 }
 
