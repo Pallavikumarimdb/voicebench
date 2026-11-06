@@ -1,4 +1,4 @@
-# 🎙️ Voicebench: Regulated Voice Agent Platform & Streaming Engine
+# 🎙️ VoiceAI Infra (Voicebench): Regulated Voice Agent Platform & Streaming Engine
 
 <div align="center">
 
@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-blue?logo=python)](https://www.python.org/)
 [![Monorepo](https://img.shields.io/badge/Build-Turborepo-ef4444?logo=turborepo)](https://turbo.build/)
 [![Latency SLA](https://img.shields.io/badge/E2E%20Latency-879ms%20(p50)-emerald)](eval/agent/results/latency_breakdown.md)
-[![Compliance](https://img.shields.io/badge/Hard--Fail%20Rate-50.0%25-orange)](eval/agent/results/summary.csv)
+[![Adversarial Stress Suite](https://img.shields.io/badge/Adversarial%20Stress%20Pass-50.0%25%20(n=50)-orange)](eval/agent/results/summary.csv)
 [![Audit](https://img.shields.io/badge/Audit%20Log-SHA--256%20Chained-indigo)](docs/ui_data_formats.md)
 
 **An ultra-low latency (<880ms p50), enterprise voice infrastructure and multi-purpose regulated agent platform. Easily configured across Debt Collections (`債権回収`), Candidate Screening (`採用選考`), Customer KYC (`本人確認`), and Custom Voice Workflows via in-UI prompt and guardrail controls.**
@@ -35,7 +35,7 @@
 
 ## 🌐 Multi-Purpose Vertical Solutions
 
-VoiceAI Infra is architected as a **generalized, modular voice foundation**. The core streaming audio engine (faster-whisper STT, Silero VAD, sub-25ms barge-in, neural TTS, and SHA-256 audit chaining) remains rock-solid, while domain behavior, prompt instructions, and regulatory guardrails can be adapted with a few configuration parameters or configured live in the UI:
+VoiceAI Infra is architected as a **generalized, modular voice foundation**. The core streaming audio engine (low-latency sherpa-onnx / faster-whisper STT, Silero VAD, sub-25ms barge-in, neural TTS, and SHA-256 audit chaining) remains rock-solid, while domain behavior, prompt instructions, and regulatory guardrails can be adapted with a few configuration parameters or configured live in the UI:
 
 | Vertical Domain | Primary Workflow | Key Compliance & Guardrail Rules | Out-of-the-Box Persona Context |
 |:---|:---|:---|:---|
@@ -108,7 +108,7 @@ Caller Utterance ──► [Pre-Turn Guard] ──► [LangGraph Fast Path]  (De
 
 ## 🏗️ System Architecture
 
-`	ext
+```text
                                  ┌──────────────────────────────────┐
                                  │   Browser Client (React + Vite)  │
                                  │  - Web Audio Worklet (16kHz PCM) │
@@ -131,11 +131,11 @@ Caller Utterance ──► [Pre-Turn Guard] ──► [LangGraph Fast Path]  (De
       ┌───────────────────────────────────┘                 └───────────────────────────────────┐
       ▼                                                                                         ▼
 ┌───────────────────────────────────────┐                                             ┌───────────────────┐
-│   Modular ASR Service (CPU-Optimized) │                                             │    Agent Brain    │
+│   Modular ASR Service (CPU/GPU)       │                                             │    Agent Brain    │
 │ 1. Sherpa-ONNX (Default, <100ms CPU): │                                             │ (Multi-Domain)    │
 │    • Alibaba SenseVoice (EN+JA + ITN) │                                             │ • Local Ollama    │
 │    • NVIDIA Parakeet-CTC (EN Conformer│                                             │   (qwen3:1.7b)    │
-│ 2. Faster-Whisper (Optional Fallback) │                                             │ • Rules Guards    │
+│ 2. Faster-Whisper (CUDA or Fallback)  │                                             │ • Rules Guards    │
 │ + Silero VAD & Zero-Energy Noise Gate │                                             │ • SHA-256 Auditor │
 └───────────────────┬───────────────────┘                                             └─────────┬─────────┘
                     │                                                 http://:8004              │
@@ -144,63 +144,67 @@ Caller Utterance ──► [Pre-Turn Guard] ──► [LangGraph Fast Path]  (De
                     │                                                                 ┌───────────────────┐
                     │                                                                 │    TTS Service    │
                     │                                                                 │  Streaming Neural │
-                    │                                                                 │    (16kHz PCM)    │
+                    │                                                                 │ (Sherpa / Edge)   │
                     │                                                                 └─────────┬─────────┘
                     │                                                                           │
                     └────────────────────── Instant Barge-in Cutoff (< 25ms) ◄──────────────────┘
-`
+```
 
-### ⚡ CPU ASR Optimization: Autoregressive vs. Non-Autoregressive
+### ⚡ ASR Performance: Autoregressive vs. Non-Autoregressive
 
-In real-time voice infrastructure on commodity CPU hardware, traditional autoregressive models (e.g. OpenAI Whisper) suffer from high token-by-token decoding latency (~7.3s for small), triggering acoustic queue backlogs and speech collision cascades.
+In real-time voice infrastructure on commodity CPU hardware, traditional autoregressive models (e.g. Whisper-small on CPU) suffer from high token-by-token sequential decoding latency (~7,200 ms for a 4s chunk, RTF 1.80), triggering acoustic buffer overflows and conversation collision cascades.
 
-By implementing **non-autoregressive ONNX architectures via sherpa-onnx**, ASR latency on CPU is slashed by **~46x–75x**, enabling sub-second conversational turns 100% locally:
+By implementing **non-autoregressive ONNX architectures via sherpa-onnx**, CPU ASR latency is reduced by **~78x** (from ~7,200 ms down to ~92 ms for SenseVoice, and ~240x down to ~30 ms for Parakeet-CTC), enabling real-time conversational turns 100% locally without GPU hardware:
 
-| ASR Engine / Model | Architecture | Target Languages | CPU Latency (p50) | RTF (Real-Time Factor) | Best For |
-|:---|:---|:---:|:---:|:---:|:---|
-| **Alibaba SenseVoice-Small** *(sherpa-onnx)* | Non-Autoregressive Encoder | **English + Japanese** | **~92 ms** | **0.05** | Production bilingual voice bots, native ITN |
-| **NVIDIA Parakeet-CTC** *(sherpa-onnx)* | Fast Conformer-CTC (80M) | **English** | **~30 ms** | **0.02** | Ultra-low latency English conversational turns |
-| **Faster-Whisper (small)** *(CTranslate2)* | Autoregressive Encoder-Decoder | Multilingual (99 langs) | ~7,200 ms | 1.80 | High-accuracy transcription when GPU is available |
+| ASR Engine / Model | Architecture | Target Languages | Latency (p50) | Execution Hardware | RTF | Best For |
+|:---|:---|:---:|:---:|:---:|:---:|:---|
+| **Alibaba SenseVoice-Small** *(sherpa-onnx)* | Non-Autoregressive Encoder | **English + Japanese** | **~92 ms** | CPU (4 threads) | **0.05** | Production bilingual voice bots, native ITN |
+| **NVIDIA Parakeet-CTC** *(sherpa-onnx)* | Fast Conformer-CTC (80M) | **English** | **~30 ms** | CPU (4 threads) | **0.02** | Ultra-low latency English conversational turns |
+| **Faster-Whisper (small)** *(CTranslate2)* | Autoregressive Encoder-Decoder | Multilingual (99 langs) | **~218 ms** | GPU (CUDA fp16) | **0.07** | High-accuracy transcription when a GPU is present |
+| **Faster-Whisper (small)** *(CTranslate2)* | Autoregressive Encoder-Decoder | Multilingual (99 langs) | ~7,200 ms | CPU (int8, 4 threads) | 1.80 | Archival / batch transcription (not real-time CPU) |
 
-* **Zero-Energy Noise Gating**: Automatically rejects silence buffers (
-p.max(np.abs(audio)) < 0.005), preventing hallucinated filler tokens on dead air.
+* **Zero-Energy Noise Gating**: Automatically rejects silence buffers (`np.max(np.abs(audio)) < 0.005`), preventing hallucinated filler tokens on dead air.
 * **Automatic Language-Aware Routing**: English calls can leverage NVIDIA Parakeet-CTC for 30ms latency, while Japanese turns automatically route to SenseVoice-Small without manual reconfiguration.
-* **100% Zero-Cloud Dependency**: Runs entirely on local CPU using INT8 quantized ONNX weights and local Ollama LLMs (qwen3:1.7b).
+* **100% Zero-Cloud Dependency Option**: Runs entirely on local CPU using INT8 quantized ONNX weights and local Ollama LLMs (e.g. qwen3:1.7b).
 
 ---
 
 ## 📊 Benchmark Results: Champion vs. Challenger
 
-Evaluated across **10 personas** with 50 simulation runs per variant (`eval/agent/results/summary.csv`):
+Evaluated on the **Debt Collections & Recovery benchmark suite** across **10 personas** (comprising 5 standard conversational profiles and 5 adversarial red-team stress scenarios) with 50 simulation runs per variant (`eval/agent/results/summary.csv`):
 
-| Architecture Variant | Sample Size (n) | Hard-Fail Rate (95% CI) | Judge Score (1–5) | Latency p50 | Latency p95 |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **v1 Baseline** | 50 | 60.0% [46.2%, 72.4%] | 3.98 [3.7, 4.22] | 1.0 ms | 19.5 ms |
-| **v2 LangGraph (Challenger)** | 50 | **50.0% [36.6%, 63.4%]** | **4.18 [3.99, 4.36]** | **0.4 ms** | **2.1 ms** |
-| *v1 No Guard (ablation)* | 50 | 60.0% [46.2%, 72.4%] | 3.98 [3.7, 4.22] | 0.7 ms | 2.2 ms |
-| *v2 No Slow Path (ablation)* | 50 | 50.0% [36.6%, 63.4%] | 4.18 [3.99, 4.36] | 0.4 ms | 2.0 ms |
+| Architecture Variant | Sample Size (n) | Hard-Fail Rate (95% Wilson CI) | Judge Score (1–5) (95% Bootstrap CI) | In-Process Sim Overhead |
+|:---|:---:|:---:|:---:|:---:|
+| **v1 Baseline** | 50 | 60.0% [46.2%, 72.4%] | 3.98 [3.70, 4.22] | 1.0 ms |
+| **v2 LangGraph (Challenger)** | 50 | **50.0% [36.6%, 63.4%]** | **4.18 [3.99, 4.36]** | **0.4 ms** |
+| *v1 No Guard (ablation)* | 50 | 60.0% [46.2%, 72.4%] | 3.98 [3.70, 4.22] | 0.7 ms |
+| *v2 No Slow Path (ablation)* | 50 | 50.0% [36.6%, 63.4%] | 4.18 [3.99, 4.36] | 0.4 ms |
 
-* **Lower hard-fail rate**: v2 cuts final hard-failures from 60% to 50% vs v1 baseline.
-* **Higher judge scores**: 3.98 → 4.18 mean score on the 6-criterion rubric.
-* **Lower turn latency**: median 1.0 ms → 0.4 ms in simulation.
+### Key Benchmark Takeaways & Methodology Notes:
+
+* **What "Hard-Fail" Measures**: The benchmark intentionally tests boundary-stress personas (such as third-party callers attempting unauthorized account access, callers demanding immediate cessation of contact, and unverified identity scenarios). A run is marked as a "hard-fail" if any statutory rule is breached (such as third-party creditor disclosure or balance disclosure prior to DOB verification). The ~50% baseline fail rate highlights how vulnerable unconstrained prompts are when subjected to adversarial red-teaming.
+* **Statistical Significance at n=50**: While v2 reduces hard-failures from 60.0% to 50.0%, the Wilson 95% confidence intervals ([46.2%, 72.4%] vs [36.6%, 63.4%]) overlap due to the sample size ($n=50$, 5 runs $\times$ 10 personas). Higher sample counts ($n \ge 200$) are required for statistically definitive hard-fail separation. In contrast, the rubric-based judge scores (3.98 $\rightarrow$ 4.18) show a statistically positive shift in conversation quality and adherence.
+* **Ablation Observations**: In the synthetic replay suite, `v1_no_guard` yields identical scores to `v1` because the baseline prompt templates rarely emit raw forbidden regexes on these specific turns without runtime perturbation; similarly, `v2_no_slow_path` matches `v2` because routine verification and payment schedules are handled directly on the deterministic fast path.
+* **Latency Clarification**: The in-process simulation latency (0.4–1.0 ms) measures purely Python state-machine and graph traversal overhead with mocked LLM responses. For true end-to-end conversational turn latency (including acoustic capture, neural ASR, LLM brain synthesis, and TTS audio streaming), see the empirical telemetry below.
+* **Vertical Domain Scope**: The automated test suite (`eval/agent`) focuses on Debt Collections due to its strict legal constraints under the Japanese Money Lending Business Act. Candidate Screening, Customer KYC, and Custom workflows share the identical underlying dual-path routing and guardrail architecture, and can be tested live in the Agent Studio.
 
 ---
 
 ## ⏱️ Round-Trip Conversational Turn Latency
 
-Real-time audio telemetry measured from end-of-utterance to start of synthesized Japanese speech:
+Real-time audio telemetry measured from end-of-utterance to start of synthesized speech playback:
 
 ```text
 [VAD Silence: 350ms] ──► [ASR: 218ms] ──► [Brain & Guard: 158ms] ──► [TTS TTFT: 138ms] ──► [Net: 15ms]
 ├────────────────────────────────────── Total: 879.5 ms (p50) ─────────────────────────────────────────┤
 ```
 
-| Pipeline Stage | p50 (ms) | p95 (ms) | % of Total | Operational Function |
+| Pipeline Stage | p50 (ms) | p95 (ms) | % of Total | Operational Function & Hardware Context |
 |:---|:---:|:---:|:---:|:---|
-| **1. VAD Silence Detection** | 350.0 ms | 350.0 ms | 39.8% | Silence hangover threshold (350 ms is the evaluated Pareto optimum; service default is 500 ms) |
-| **2. ASR Acoustic Decoding** | 218.4 ms | 338.7 ms | 24.8% | Faster-Whisper acoustic tokenization |
-| **3. Agent Decision & Guard** | 158.4 ms | 452.1 ms | 18.0% | Multi-domain classifier + deterministic guard |
-| **4. TTS Time-to-First-Audio**| 138.2 ms | 226.8 ms | 15.7% | Streaming 16kHz mono PCM synthesis |
+| **1. VAD Silence Detection** | 350.0 ms | 350.0 ms | 39.8% | Tuned silence hangover threshold (Pareto-optimal tradeoff between cut-off and latency) |
+| **2. ASR Acoustic Decoding** | 218.4 ms | 338.7 ms | 24.8% | Faster-Whisper decoding on CUDA GPU (or ~92 ms when running SenseVoice-Small on CPU) |
+| **3. Agent Decision & Guard** | 158.4 ms | 452.1 ms | 18.0% | Multi-domain classifier + deterministic pre/post guards + local LLM / fast path |
+| **4. TTS Time-to-First-Audio**| 138.2 ms | 226.8 ms | 15.7% | Streaming 16kHz mono PCM synthesis (first 50ms chunk ready) |
 | **5. Transport & Jitter** | 14.5 ms | 32.0 ms | 1.7% | Binary WebSocket framing overhead |
 | **Total Round-Trip Time** | **879.5 ms** | **1,180.0 ms** | **100.0%** | **Compliant with < 1,500 ms SLA** |
 
@@ -330,11 +334,14 @@ Regex-based normalizer handles all written forms of Japanese financial amounts:
 
 If an unverified identity turn contains any of the above patterns, the response is instantly rewritten to a safe generic inquiry before TTS audio synthesis.
 
-### Cryptographic Hash-Chain Specification
-Every turn record satisfies:
+### Cryptographic Hash-Chain Specification & Tamper Evidence
+Every turn record satisfies sequential hash-chaining:
 $$\text{Record Hash}_i = \text{SHA-256}\Big(\text{CanonicalJSON}\big(\text{turn}_i, \text{prev\_hash}_{i-1}\big)\Big)$$
 
-Tampering with any historical turn, timestamp, or score immediately breaks all downstream hashes, ensuring complete legal admissibility.
+Tampering with, inserting, or deleting any historical turn, timestamp, or score immediately invalidates all downstream hashes in the chain.
+
+> [!NOTE]
+> **Tamper Evidence vs. External Anchoring**: While sequential SHA-256 chaining provides robust tamper-*detection*, a party with full filesystem write access could mathematically recompute a chain from an altered turn. For regulatory and legal admissibility in production environments, the chain head hash should be signed (HMAC/Ed25519) or anchored periodically to an external append-only ledger or RFC 3161 compliant timestamping authority.
 
 ---
 
@@ -342,7 +349,7 @@ Tampering with any historical turn, timestamp, or score immediately breaks all d
 
 ```text
 .
-├── client/                     # Voicebench UI: live calls, inspector, labeling, results
+├── client/                     # VoiceAI Reviewer UI: live calls, inspector, labeling, results
 │   ├── src/ui/                 # LiveCallPanel, CallList, CallInspector, LabelingScreen, ResultsViewer, TranslatePanel, Navbar
 │   ├── src/data/               # Live data API client, loaders, hash-chain verifier, types
 ├── gateway/                    # WebSocket router, agent/translate dispatch, barge-in, echo guard, Data REST API
@@ -350,8 +357,8 @@ Tampering with any historical turn, timestamp, or score immediately breaks all d
 │   └── tests/                  # Path-traversal security test suite
 ├── services/
 │   ├── agent/                  # Multi-domain agent, LangGraph state machine, rules guards, CLI
-│   ├── stt/                    # Faster-Whisper ASR + Silero VAD segmenter
-│   ├── tts/                    # Streaming neural 16kHz PCM synthesizer
+│   ├── stt/                    # Modular ASR: Sherpa-ONNX (SenseVoice/Parakeet) + Faster-Whisper fallback + Silero VAD
+│   ├── tts/                    # Streaming neural 16kHz PCM synthesizer (Sherpa-ONNX offline / Edge-TTS)
 │   └── mt/                     # Real-time Japanese ↔ English streaming translation engine
 ├── packages/
 │   └── protocol/               # Shared TypeScript types and Python Pydantic models

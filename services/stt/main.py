@@ -212,7 +212,36 @@ async def websocket_stream(websocket: WebSocket):
                             finally:
                                 session.asr_busy = False
 
-                            # After finishing, immediately process any pending segment
+                            # Process and emit the finalized segment first
+                            final_text = (asr_result.get("text", "") or "").strip()
+                            if final_text and len(final_text) >= 2:
+                                COMMITTED_UTTERANCES.inc()
+                                final_msg = {
+                                    "type": "final",
+                                    "uttId": session.current_utt_id,
+                                    "text": final_text,
+                                    "words": asr_result["words"],
+                                    "tCapture": session.last_capture_time_ms,
+                                    "tFinal": int(time.time() * 1000)
+                                }
+                                try:
+                                    await websocket.send_text(json.dumps(final_msg))
+                                except Exception:
+                                    pass
+
+                                print(json.dumps({
+                                    "sessionId": session.session_id,
+                                    "uttId": session.current_utt_id,
+                                    "stage": "asr_final",
+                                    "tCapture": session.last_capture_time_ms,
+                                    "tFinal": final_msg["tFinal"],
+                                    "text": final_text
+                                }))
+
+                                session.next_utterance()
+                                _touch_session(session.session_id)
+
+                            # After finishing the current segment, immediately process any pending segment
                             # that arrived while we were busy.
                             pending = getattr(session, 'pending_segment', None)
                             if pending is not None:
@@ -256,38 +285,6 @@ async def websocket_stream(websocket: WebSocket):
                                     session.next_utterance()
                                     _touch_session(session.session_id)
 
-
-                            final_text = (asr_result.get("text", "") or "").strip()
-                            # Belt-and-braces: asr.py already drops these, but a
-                            # stale 100ms VAD blip must never become a turn.
-                            if final_text and len(final_text) >= 2:
-                                COMMITTED_UTTERANCES.inc()
-                                final_msg = {
-                                    "type": "final",
-                                    "uttId": session.current_utt_id,
-                                    "text": final_text,
-                                    "words": asr_result["words"],
-                                    "tCapture": session.last_capture_time_ms,
-                                    "tFinal": int(time.time() * 1000)
-                                }
-                                try:
-                                    await websocket.send_text(json.dumps(final_msg))
-                                except Exception:
-                                    pass
-
-                                # Log structured event for offline eval replays
-                                print(json.dumps({
-                                    "sessionId": session.session_id,
-                                    "uttId": session.current_utt_id,
-                                    "stage": "asr_final",
-                                    "tCapture": session.last_capture_time_ms,
-                                    "tFinal": final_msg["tFinal"],
-                                    "text": final_text
-                                }))
-
-                                session.next_utterance()
-                                _touch_session(session.session_id)
-
                     # 4. Periodic partial ASR running every min_chunk_ms, but only
                     # while speech is (or was very recently) active. Transcribing
                     # pure silence wastes CPU on slow hosts and makes Whisper
@@ -296,7 +293,7 @@ async def websocket_stream(websocket: WebSocket):
                         # On CPU, partials every 1.2s still starve finals (11s
                         # latency seen in prod). Back off to 2.5s and only
                         # transcribe the trailing 12s window.
-                        cpu_min_interval = 2500 if asr_wrapper.device == "cpu" else min_chunk_ms
+                        cpu_min_interval = 2500 if getattr(asr_wrapper, "device", "cpu") == "cpu" else min_chunk_ms
                         if (now_ms - session.last_asr_run_time_ms) >= cpu_min_interval:
                             session.last_asr_run_time_ms = now_ms
 
@@ -304,7 +301,7 @@ async def websocket_stream(websocket: WebSocket):
                                 pass
                             else:
                                 partial_audio = session.active_audio
-                                if asr_wrapper.device == "cpu" and len(partial_audio) > 16000 * 12:
+                                if getattr(asr_wrapper, "device", "cpu") == "cpu" and len(partial_audio) > 16000 * 12:
                                     partial_audio = partial_audio[-16000 * 12:]
                                 session.asr_busy = True
                                 try:

@@ -369,6 +369,8 @@ class ASRModelWrapper:
         compute_type: str = "int8",
         cpu_threads: int = 4
     ):
+        self._device = device
+        self._compute_type = compute_type
         self.default_engine_type = os.getenv("STT_ENGINE", "sherpa-onnx").lower()
         self._sherpa_engine: Optional[SherpaONNXEngine] = None
         self._whisper_engine: Optional[FasterWhisperEngine] = None
@@ -390,6 +392,13 @@ class ASRModelWrapper:
                 )
             except Exception as e:
                 print(f"[ASRWrapper] FasterWhisper init notice: {e}")
+
+    @property
+    def device(self) -> str:
+        """Active computing device (e.g. cpu, cuda)."""
+        if self._whisper_engine and hasattr(self._whisper_engine, "device"):
+            return self._whisper_engine.device
+        return self._device or "cpu"
 
     @property
     def model_size(self) -> str:

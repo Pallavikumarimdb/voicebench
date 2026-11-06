@@ -15,7 +15,7 @@ services:
       - MT_SERVICE_URL=http://mt-service:8002/translate
       - AGENT_SERVICE_URL=http://agent-service:8003/turn
       - TTS_SERVICE_URL=http://tts-service:8004/synthesize
-      - MAX_BUFFERED_BYTES=65536
+      - MAX_BUFFERED_BYTES=524288
     depends_on:
       - stt-service
       - mt-service
@@ -57,9 +57,11 @@ services:
     environment:
       - STT_HOST=0.0.0.0
       - STT_PORT=8001
+      - STT_ENGINE=sherpa-onnx
+      - SHERPA_MODEL=sense-voice
       - STT_MODEL_SIZE=large-v3-turbo
-      - STT_DEVICE=cuda
-      - STT_COMPUTE_TYPE=float16
+      - STT_DEVICE=cpu
+      - STT_COMPUTE_TYPE=int8
       - LOCAL_AGREEMENT_N=2
     deploy:
       resources:

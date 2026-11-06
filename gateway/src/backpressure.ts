@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import { Session } from './Session';
 import { metrics } from './metrics';
 
-const MAX_BUFFERED_BYTES = parseInt(process.env.MAX_BUFFERED_BYTES || '262144', 10);
+const MAX_BUFFERED_BYTES = parseInt(process.env.MAX_BUFFERED_BYTES || '524288', 10);
 
 /**
  * Drop-oldest backpressure policy:
