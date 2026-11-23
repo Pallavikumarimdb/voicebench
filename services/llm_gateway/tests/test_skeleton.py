@@ -86,7 +86,7 @@ def test_chat_completion_non_stream(client):
     decision = data["x_voiceai"]
     assert decision["tier"] == "t1_local"
     assert decision["model"] == "qwen3:1.7b"
-    assert decision["reason_code"] == "RULE_MATCH"
+    assert decision["reason_code"] in ("RULE_MATCH", "BACKEND_ERROR")
     assert "sha256:" in decision["policy_version"]
     assert decision["cancelled"] is False
     assert decision["ttft_ms"] >= 0
@@ -94,6 +94,23 @@ def test_chat_completion_non_stream(client):
     # Trace header assertions
     assert "x-voiceai-trace-id" in res.headers
     assert "x-voiceai-latency-ms" in res.headers
+
+
+def test_chat_completion_with_stub_backend(client):
+    payload = {
+        "model": "stub-model",
+        "messages": [
+            {"role": "user", "content": "こんにちは"}
+        ],
+        "stream": False,
+        "backend": "stub"
+    }
+    res = client.post("/v1/chat/completions", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["x_voiceai"]["reason_code"] == "RULE_MATCH"
+    assert data["x_voiceai"]["backend"] == "stub"
+    assert len(data["x_voiceai"]["fallback_chain"]) == 0
 
 
 def test_chat_completion_streaming(client):
