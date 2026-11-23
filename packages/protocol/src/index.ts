@@ -194,10 +194,93 @@ export interface StatusMessage {
   tEmit: number;
 }
 
+export interface PlaybackStartMessage {
+  type: 'playback_start';
+  uttId?: number;
+  tPlaybackStart: number;
+}
+
+// Audit Schema v2 and Chain Head Protocol Types (Plan 1 Section 5.3)
+export interface AuditGuardEvent {
+  rule_id: string;
+  stage: 'pre' | 'post';
+  action: 'allow' | 'rewrite' | 'block';
+  detail?: string;
+}
+
+export interface RoutingDecision {
+  tier: string;
+  backend?: string;
+  model?: string;
+  rule_id?: string;
+  reason_code?: string;
+  policy_version?: string;
+  cache?: 'hit' | 'miss';
+  constraint_mode?: string;
+  fallback_chain?: Array<{ from: string; to: string; reason: string }>;
+  ttft_ms?: number;
+  tokens_in?: number;
+  tokens_out?: number;
+  cached_tokens?: number;
+  cancelled?: boolean;
+}
+
+export interface AuditTimingStages {
+  vad_hangover: number;
+  asr: number;
+  pre_guard: number;
+  llm_ttft: number;
+  llm_total: number;
+  post_guard: number;
+  tts_first_audio: number;
+  transport: number;
+}
+
+export interface AuditTimings {
+  vad_end_to_first_audio_ms: number;
+  stages: AuditTimingStages;
+}
+
+export interface AuditRecordV2 {
+  schema_version: 2;
+  call_id: string;
+  turn_index: number;
+  ts: string;
+  caller_text: string;
+  agent_attempted_text: string;
+  agent_final_text: string;
+  guard_events: AuditGuardEvent[];
+  route: RoutingDecision | { tier: string };
+  timings: AuditTimings;
+  client_generated?: boolean;
+  prev_hash: string;
+  hash?: string;
+}
+
+export interface ChainHeadRecord {
+  type: 'chain_head';
+  call_id: string;
+  head_hash: string;
+  alg: 'ed25519' | 'hmac-sha256';
+  key_id: string;
+  signature: string;
+}
+
+export interface PolicyChangeRecord {
+  ts: string;
+  who: string;
+  old_hash: string;
+  new_hash: string;
+  diff_summary: Record<string, any> | string;
+  prev_hash: string;
+  hash: string;
+}
+
 export type GatewayMessage =
   | PartialMessage
   | FinalMessage
   | TranslatedMessage
+  | PlaybackStartMessage
   | AgentTextMessage
   | AgentAudioChunkMessage
   | AgentSpeechStartMessage

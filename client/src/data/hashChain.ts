@@ -160,6 +160,24 @@ export function verifyHashChain(records: AuditRecord[]): AuditVerifyResult {
 
   for (let idx = 0; idx < records.length; idx++) {
     const entry = records[idx];
+    if ((entry as any).type === 'chain_head') {
+      if (idx !== records.length - 1) {
+        return {
+          valid: false,
+          error: `chain_head record must be the final entry, found at index ${idx}`,
+          verifiedCount: idx,
+        };
+      }
+      if ((entry as any).head_hash !== expectedPrev) {
+        return {
+          valid: false,
+          error: `chain_head hash mismatch: head_hash '${(entry as any).head_hash}' != chain tail '${expectedPrev}'`,
+          verifiedCount: idx,
+        };
+      }
+      continue;
+    }
+
     const seq = entry.seq ?? idx + 1;
     const storedHash = entry.hash;
     const entryPrev = entry.prev_hash;

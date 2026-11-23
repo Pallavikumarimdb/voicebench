@@ -23,6 +23,8 @@ export interface Session {
   /** Last agent utterance text + when its playback ended (echo suppression). */
   lastAgentText?: string;
   lastAgentSpeechEndAt?: number;
+  lastCallerSpeechEndAt?: number;
+  lastAgentSpeechStartAt?: number;
   /** Highest STT uttId seen (survives STT reconnects so numbering continues). */
   lastSttUttId?: number;
   /** Dual-channel audio recorder for call inspector playback and download. */

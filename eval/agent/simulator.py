@@ -55,10 +55,49 @@ class ConversationSimulator:
             def check_pre_turn(self, state): return None
             def check_post_llm(self, proposed_text, state): return None
 
+        from .stub_llm import ScriptableStubLLM
+        stub_llm = ScriptableStubLLM(violation_rate=0.45, seed=seed)
+
+        class StubAblationAgent:
+            def __init__(self, base_agent, guard_obj):
+                self.base_agent = base_agent
+                self.guard = guard_obj
+
+            def process_turn(self, sess_id, u_text, s_state, a_logger=None):
+                base_out = self.base_agent.process_turn(sess_id, u_text, s_state, audit_logger=None)
+                proposed = stub_llm.generate_candidate_reply(
+                    s_state.get("phase", "greet"),
+                    s_state,
+                    base_out["text"]
+                )
+                block = self.guard.check_post_llm(proposed, s_state)
+                if block:
+                    rule_code, fallback = block
+                    final_text = fallback
+                    if a_logger:
+                        a_logger.append("compliance_block", {
+                            "rule": rule_code,
+                            "attempted": proposed,
+                            "final": fallback
+                        })
+                else:
+                    final_text = proposed
+
+                if a_logger:
+                    a_logger.append("agent_utterance", {
+                        "attempted": proposed,
+                        "final": final_text,
+                        "phase": s_state.get("phase"),
+                        "turn": s_state.get("turn_count", 1)
+                    })
+
+                base_out["text"] = final_text
+                return base_out
+
         if variant == "v1_no_guard":
-            agent = BaselineCollectionsAgent(guard=NoOpGuard())
+            agent = StubAblationAgent(BaselineCollectionsAgent(guard=NoOpGuard()), NoOpGuard())
         elif variant == "v1_baseline":
-            agent = BaselineCollectionsAgent(guard=guard)
+            agent = StubAblationAgent(BaselineCollectionsAgent(guard=guard), guard)
         elif variant == "v2_graph_no_slow_path":
             agent = CollectionsGraphAgent(guard=guard, enable_slow_path=False)
         else:

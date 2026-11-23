@@ -10,10 +10,11 @@ class UtteranceClassifier:
     def classify(self, user_text: str, current_phase: str) -> Dict[str, Any]:
         text = user_text.strip().lower()
 
-        # Flags detection
-        is_third_party = any(w in text for w in [
-            "家族", "妻", "夫", "母", "父", "息子", "娘", "同居人", "本人ではありません", "留守", "不在", "違う人", "別人"
-        ])
+        # Flags detection (avoid false positive on 大丈夫 or 工夫)
+        third_party_words = [
+            "家族", "妻", "母", "父", "息子", "娘", "同居人", "本人ではありません", "留守", "不在", "違う人", "別人", "旦那", "主人"
+        ]
+        is_third_party = any(w in text for w in third_party_words) or bool(re.search(r'(?<!大丈)(?<!工)夫', text))
 
         is_stop_contact = any(w in text for w in [
             "連絡しないで", "電話しないで", "かけてこないで", "連絡を止め", "迷惑", "二度とかけないで", "着信拒否"

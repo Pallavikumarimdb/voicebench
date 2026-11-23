@@ -222,6 +222,7 @@ wss.on('connection', (clientWs: WebSocket) => {
           sendJson(clientWs, { ...sttMsg, tEmit: now });
         } else if (sttMsg.type === 'final') {
           const tFinal = now;
+          session.lastCallerSpeechEndAt = sttMsg.tFinal || tFinal;
           if (sttMsg.tCapture) {
             const latSec = (tFinal - sttMsg.tCapture) / 1000;
             metrics.e2eLatency.observe({ boundary: 'capture_to_final' }, latSec);
@@ -329,6 +330,7 @@ wss.on('connection', (clientWs: WebSocket) => {
                 // Stream agent audio back to client via TTS
                 session.isAgentSpeaking = true;
                 session.agentSpeakingStartedAt = Date.now();
+                session.lastAgentSpeechStartAt = Date.now();
                 session.currentSpeakingUttId = currentUttId;
                 session.currentTTSAbort = new AbortController();
 
@@ -620,6 +622,12 @@ wss.on('connection', (clientWs: WebSocket) => {
             agentClient.endSession(sessionId).catch(() => {});
           }
           sendJson(clientWs, { type: 'stopped' });
+        } else if (msg.type === 'playback_start') {
+          const tPlayback = msg.tPlaybackStart || Date.now();
+          if (session.lastCallerSpeechEndAt) {
+            const e2eSec = (tPlayback - session.lastCallerSpeechEndAt) / 1000;
+            metrics.e2eLatency.observe({ boundary: 'turn_total' }, e2eSec);
+          }
         }
       } catch (err) {
         console.error(`[Gateway] Invalid control frame for session ${sessionId}:`, err);

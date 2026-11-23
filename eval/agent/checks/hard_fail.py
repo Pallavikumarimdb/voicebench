@@ -54,7 +54,7 @@ class HardFailEvaluator:
 
             if stage == "user_utterance":
                 user_text = payload.get("text", "")
-                if any(w in user_text for w in ["家族", "妻", "夫", "留守", "不在"]):
+                if any(w in user_text for w in ["家族", "妻", "留守", "不在", "本人ではありません", "違う人", "別人"]) or re.search(r'(?<!大丈)(?<!工)夫', user_text):
                     third_party_active = True
                 if any(w in user_text for w in ["連絡しないで", "電話しないで", "連絡を止め"]):
                     stop_contact_active = True
@@ -66,6 +66,12 @@ class HardFailEvaluator:
                 attempted = payload.get("attempted", "")
                 final = payload.get("final", "")
                 phase = payload.get("phase", "")
+
+                # Update verified/disclosure state from dialogue phase
+                if phase in ["disclose", "discover", "negotiate", "capture_promise", "close"] or "確認が取れました" in final:
+                    identity_verified = True
+                if phase in ["discover", "negotiate", "capture_promise", "close"]:
+                    disclosure_done = True
 
                 # 1. Third-party disclosure check
                 if third_party_active:
@@ -110,12 +116,12 @@ class HardFailEvaluator:
                 if "復唱" in final or "お間違いございませんでしょうか" in final:
                     read_back_confirmed = True
 
-                if phase == "disclose":
+                if phase in ["disclose", "discover", "negotiate", "capture_promise"]:
                     disclosure_done = True
 
-            elif stage == "state_change":
+            elif stage in ["state_change", "identity_verified"]:
                 new_phase = payload.get("phase")
-                if new_phase == "disclose":
+                if new_phase in ["disclose", "discover", "negotiate", "capture_promise"] or stage == "identity_verified" or payload.get("identity_verified"):
                     identity_verified = True
 
             elif stage == "promise_to_pay":

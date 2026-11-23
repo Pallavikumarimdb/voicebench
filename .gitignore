@@ -49,5 +49,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-plan.md
+/plan*
 UI_BUILD_PLAN.md
