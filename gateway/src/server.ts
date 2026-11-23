@@ -209,6 +209,10 @@ wss.on('connection', (clientWs: WebSocket) => {
             if (partialFresh && speakElapsed > 450) {
               console.log(`[Gateway] Barge-in detected during utterance ${session.currentSpeakingUttId}`);
               session.currentTTSAbort?.abort();
+              session.currentAgentAbort?.abort();
+              if (session.id) {
+                agentClient.cancelTurn(session.id, session.currentSpeakingUttId).catch(() => {});
+              }
               session.isAgentSpeaking = false;
               sendJson(clientWs, {
                 type: 'interrupt',
@@ -274,17 +278,23 @@ wss.on('connection', (clientWs: WebSocket) => {
               if (isLowQuality) {
                 console.log(`[Gateway] Low-quality final ignored for turn logic: utt ${currentUttId} "${currentText}"`);
               } else {
-              const res = await agentClient.turn({
-                sessionId: session.id,
-                uttId: currentUttId,
-                text: currentText,
-                tCaptureMs: sttMsg.tCapture,
-                config: session.config,
-                context: session.contextWindow.slice(-5),
-              }).catch((agentErr) => {
-                console.error(`[Gateway] Agent turn failed for ${currentUttId}:`, agentErr?.message || agentErr);
-                return null;
-              });
+              session.currentAgentAbort = new AbortController();
+              let res: any = null;
+              try {
+                res = await agentClient.turn({
+                  sessionId: session.id,
+                  uttId: currentUttId,
+                  text: currentText,
+                  tCaptureMs: sttMsg.tCapture,
+                  config: session.config,
+                  context: session.contextWindow.slice(-5),
+                }, session.currentAgentAbort.signal).catch((agentErr) => {
+                  console.error(`[Gateway] Agent turn failed for ${currentUttId}:`, agentErr?.message || agentErr);
+                  return null;
+                });
+              } finally {
+                session.currentAgentAbort = undefined;
+              }
 
               const tAgentDone = Date.now();
               const agentLatSec = (tAgentDone - tFinal) / 1000;

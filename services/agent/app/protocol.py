@@ -62,6 +62,10 @@ class BrainResponse(BaseModel):
     events: List[BrainEvent] = Field(default_factory=list)
     metrics: BrainMetrics
 
+class TurnCancelRequest(BaseModel):
+    sessionId: str
+    uttId: Optional[int] = None
+
 class SessionStartRequest(BaseModel):
     sessionId: Optional[str] = Field(None, pattern=r"^[a-zA-Z0-9_\-]{1,128}$")
     debtorId: str = Field("deb_001", pattern=r"^[a-zA-Z0-9_\-]{1,64}$")

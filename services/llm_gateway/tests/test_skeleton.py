@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 # Add service directory to path
 service_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if service_root not in sys.path:
+if sys.path[0] != service_root:
     sys.path.insert(0, service_root)
 
 from app.main import app

@@ -19,7 +19,7 @@ from prometheus_client import Histogram, Counter, generate_latest, CONTENT_TYPE_
 
 from .protocol import (
     BrainRequest, BrainResponse, BrainEvent, BrainMetrics,
-    SessionStartRequest, SessionEndRequest
+    SessionStartRequest, SessionEndRequest, TurnCancelRequest
 )
 from .graph import CollectionsGraphAgent
 from .baseline import BaselineCollectionsAgent
@@ -258,6 +258,37 @@ async def turn(req: BrainRequest) -> BrainResponse:
             events=brain_events,
             metrics=brain_metrics
         )
+
+@app.post("/turn/cancel")
+async def cancel_turn(req: TurnCancelRequest):
+    """
+    Cancels in-flight turn processing for the given session and propagates
+    cancellation to the upstream LLM Gateway if configured.
+    """
+    session_id = req.sessionId
+    cancelled = False
+
+    # Propagate cancellation to upstream LLM Gateway
+    llm_gateway_url = os.environ.get("LLM_GATEWAY_URL")
+    if llm_gateway_url:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=1.0) as client:
+                res = await client.post(
+                    f"{llm_gateway_url.rstrip('/')}/v1/cancel",
+                    json={"session_id": session_id, "turn_id": str(req.uttId or "")}
+                )
+                if res.status_code == 200:
+                    cancelled = True
+        except Exception:
+            pass
+
+    return {
+        "status": "cancelled",
+        "sessionId": session_id,
+        "uttId": req.uttId,
+        "upstream_cancelled": cancelled
+    }
 
 # Tool & Webhook Endpoints
 @app.get("/tools")

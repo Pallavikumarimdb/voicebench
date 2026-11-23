@@ -19,6 +19,7 @@ export interface Session {
   agentSpeakingStartedAt?: number;
   currentSpeakingUttId?: number;
   currentTTSAbort?: AbortController;
+  currentAgentAbort?: AbortController;
   config?: Record<string, any>;
   /** Last agent utterance text + when its playback ended (echo suppression). */
   lastAgentText?: string;

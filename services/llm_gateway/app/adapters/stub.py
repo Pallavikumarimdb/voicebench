@@ -51,6 +51,7 @@ class StubAdapter(BaseAdapter):
         self.error_mode: str = "none"  # "none", "timeout", "5xx", "slow_ttft", "mid_stream_drop"
         self.slow_ttft_delay_ms: float = 1200.0
         self.cached_tokens: int = 64
+        self.on_token_yield = None
 
     def set_error_mode(self, mode: str):
         valid_modes = {"none", "timeout", "5xx", "slow_ttft", "mid_stream_drop"}
@@ -64,6 +65,7 @@ class StubAdapter(BaseAdapter):
     def reset(self):
         self.error_mode = "none"
         self.scripted_tokens = None
+        self.on_token_yield = None
 
     async def health(self) -> bool:
         return self.error_mode != "5xx"
@@ -129,6 +131,10 @@ class StubAdapter(BaseAdapter):
                 tokens_out=total_out,
                 cached_tokens=self.cached_tokens if idx == 0 else None
             )
+            if self.on_token_yield:
+                cb_res = self.on_token_yield(idx, token)
+                if asyncio.iscoroutine(cb_res):
+                    await cb_res
             await asyncio.sleep(self.token_interval_ms / 1000.0)
 
         # Final finish chunk

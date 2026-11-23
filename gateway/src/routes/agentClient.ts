@@ -13,9 +13,18 @@ export class AgentClient {
     this.timeoutMs = timeoutMs;
   }
 
-  async turn(req: BrainRequest): Promise<BrainResponse | null> {
+  async turn(req: BrainRequest, externalSignal?: AbortSignal): Promise<BrainResponse | null> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    const onExternalAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        controller.abort();
+      } else {
+        externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+      }
+    }
 
     try {
       const response = await fetch(this.serviceUrl, {
@@ -32,11 +41,40 @@ export class AgentClient {
       const data = (await response.json()) as BrainResponse;
       return data;
     } catch (err: any) {
-      console.error(`[AgentClient] Error communicating with Agent service for session ${req.sessionId}:`, err?.message || err);
+      if (err?.name === 'AbortError' || controller.signal.aborted) {
+        console.log(`[AgentClient] Turn cancelled for session ${req.sessionId}`);
+      } else {
+        console.error(`[AgentClient] Error communicating with Agent service for session ${req.sessionId}:`, err?.message || err);
+      }
       return null;
     } finally {
       clearTimeout(timeoutId);
+      if (externalSignal) {
+        externalSignal.removeEventListener('abort', onExternalAbort);
+      }
     }
+  }
+
+  async cancelTurn(sessionId: string, uttId?: number): Promise<any> {
+    const cancelUrl = this.serviceUrl.replace(/\/turn$/, '/turn/cancel');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    try {
+      const response = await fetch(cancelUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, uttId }),
+        signal: controller.signal,
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (err: any) {
+      // Best-effort cancel notification
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    return null;
   }
 
   async endSession(sessionId: string): Promise<any> {

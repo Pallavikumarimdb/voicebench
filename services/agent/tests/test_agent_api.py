@@ -124,3 +124,12 @@ def test_english_collections_turn_interaction():
     assert "date of birth" in data["text"].lower()
     assert any(e["payload"].get("language") == "en" for e in data["events"])
 
+
+def test_turn_cancel():
+    resp = client.post("/turn/cancel", json={"sessionId": "s_test_cancel_123", "uttId": 2})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "cancelled"
+    assert data["sessionId"] == "s_test_cancel_123"
+    assert data["uttId"] == 2
+
