@@ -56,6 +56,8 @@ class OpenAICompatibleAdapter(BaseAdapter):
             "temperature": request.temperature,
             "max_tokens": request.max_tokens
         }
+        if stream:
+            payload["stream_options"] = {"include_usage": True}
         if request.stop:
             payload["stop"] = request.stop
         if request.json_schema:

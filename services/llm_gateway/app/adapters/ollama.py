@@ -40,6 +40,7 @@ class OllamaAdapter(BaseAdapter):
             "model": request.model,
             "messages": request.messages,
             "stream": stream,
+            "keep_alive": "15m",  # Plan 1 P1-T5: keep model context resident in memory for prompt caching
             "options": {
                 "temperature": request.temperature,
                 "num_predict": request.max_tokens

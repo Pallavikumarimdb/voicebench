@@ -387,19 +387,21 @@ class GeneralizedVoiceAgent:
                 for m in history
             )
             stage = ctx.state.get("stage", "active")
+            # Plan 1 P1-T5: Keep static prefix byte-stable across all turns of a session.
+            # Dynamic stage, conversation history, and template reply are placed in the dynamic user turn.
             system = (
                 f"You are a professional {ctx.state.get('domain', 'custom')} voice agent "
                 f"speaking {ctx.language}. Rephrase the AGENT LINE below naturally for spoken "
                 f"conversation in 1-2 short sentences. Keep every fact, amount, name, and "
                 f"commitment EXACTLY identical — add nothing new. Never claim identity "
                 f"verification, a recorded promise, a sent email, or any balance/amount "
-                f"unless present in the AGENT LINE. Conversation stage: {stage}."
+                f"unless present in the AGENT LINE."
             )
             if ctx.instructions:
                 system += f" Operator instructions: {ctx.instructions[:500]}"
             messages = [
                 {"role": "system", "content": system},
-                {"role": "user", "content": f"Conversation so far:\n{convo}\n\nAGENT LINE:\n{template_reply}"},
+                {"role": "user", "content": f"Conversation stage: {stage}\nConversation so far:\n{convo}\n\nAGENT LINE:\n{template_reply}"},
             ]
             timeout = float(os.getenv("AGENT_LOCAL_TIMEOUT_S", "12.0")) if provider == "local" else 3.5
             max_tok = 60 if provider == "local" else 100

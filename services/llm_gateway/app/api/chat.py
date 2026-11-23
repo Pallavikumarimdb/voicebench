@@ -253,6 +253,12 @@ async def stream_chat_generator(
                     "finish_reason": "stop" if not cancelled else "abort"
                 }
             ],
+            "usage": {
+                "prompt_tokens": total_tokens_in,
+                "completion_tokens": total_tokens_out,
+                "total_tokens": total_tokens_in + total_tokens_out,
+                "prompt_tokens_details": {"cached_tokens": cached_tokens}
+            },
             "x_voiceai": decision
         }
         yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
@@ -389,7 +395,8 @@ async def chat_completions(
             "usage": {
                 "prompt_tokens": adapter_res.tokens_in,
                 "completion_tokens": adapter_res.tokens_out,
-                "total_tokens": adapter_res.tokens_in + adapter_res.tokens_out
+                "total_tokens": adapter_res.tokens_in + adapter_res.tokens_out,
+                "prompt_tokens_details": {"cached_tokens": adapter_res.cached_tokens}
             },
             "x_voiceai": decision
         }
