@@ -159,8 +159,10 @@ async def stream_chat_generator(
     cached_tokens = 0
     cancelled = False
 
+    in_thinking = False
+
     async def _run_stream(target_adapter, target_backend: str):
-        nonlocal first_token, ttft_ms, total_tokens_in, total_tokens_out, cached_tokens, cancelled
+        nonlocal first_token, ttft_ms, total_tokens_in, total_tokens_out, cached_tokens, cancelled, in_thinking
         async for chunk in target_adapter.stream(adapter_req):
             # Check for client disconnect or explicit cancellation
             if active_req.cancel_event.is_set() or active_req.cancelled:
@@ -178,27 +180,40 @@ async def stream_chat_generator(
             if chunk.cached_tokens is not None:
                 cached_tokens = chunk.cached_tokens
 
-            if chunk.delta_content:
-                if first_token:
-                    ttft_s = time.monotonic() - start_time
-                    ttft_ms = ttft_s * 1000.0
-                    voiceai_llm_ttft_seconds.observe(ttft_s)
-                    first_token = False
+            delta = chunk.delta_content
+            if delta:
+                # Plan 1 P1-T6: Suppress Qwen reasoning (<think>) tokens on the voice path
+                if "<think>" in delta:
+                    in_thinking = True
+                    delta = delta.split("<think>", 1)[0]
+                if in_thinking:
+                    if "</think>" in delta:
+                        in_thinking = False
+                        delta = delta.split("</think>", 1)[1]
+                    else:
+                        delta = ""
 
-                out_chunk = {
-                    "id": completion_id,
-                    "object": "chat.completion.chunk",
-                    "created": created_ts,
-                    "model": req.model,
-                    "choices": [
-                        {
-                            "index": 0,
-                            "delta": {"content": chunk.delta_content},
-                            "finish_reason": None
-                        }
-                    ]
-                }
-                yield f"data: {json.dumps(out_chunk, ensure_ascii=False)}\n\n"
+                if delta:
+                    if first_token:
+                        ttft_s = time.monotonic() - start_time
+                        ttft_ms = ttft_s * 1000.0
+                        voiceai_llm_ttft_seconds.observe(ttft_s)
+                        first_token = False
+
+                    out_chunk = {
+                        "id": completion_id,
+                        "object": "chat.completion.chunk",
+                        "created": created_ts,
+                        "model": req.model,
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"content": delta},
+                                "finish_reason": None
+                            }
+                        ]
+                    }
+                    yield f"data: {json.dumps(out_chunk, ensure_ascii=False)}\n\n"
 
     try:
         try:
@@ -359,6 +374,9 @@ async def chat_completions(
             backend_name = "stub"
             adapter = registry.get("stub")
             adapter_res = await adapter.complete(adapter_req)
+
+        from ..adapters.base import strip_thinking_tokens
+        adapter_res.content = strip_thinking_tokens(adapter_res.content)
 
         voiceai_llm_ttft_seconds.observe(adapter_res.ttft_ms / 1000.0)
         created_ts = int(time.time())

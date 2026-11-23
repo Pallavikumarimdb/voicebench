@@ -3,9 +3,22 @@ Base Adapter Interface and Capabilities Specification (Plan 1 Section 6 P1-T2).
 All backend adapters implement this interface.
 """
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, AsyncGenerator
+
+
+def strip_thinking_tokens(text: str) -> str:
+    """
+    Plan 1 Section 6 P1-T6:
+    Strips internal reasoning ('thinking') tokens (<think>...</think>) from output.
+    Reasoning monologues inflate voice TTFT and must never leak into spoken audio.
+    """
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    if "<think>" in cleaned:
+        cleaned = re.sub(r"<think>.*$", "", cleaned, flags=re.DOTALL)
+    return cleaned.strip()
 
 
 @dataclass

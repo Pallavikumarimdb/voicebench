@@ -237,3 +237,20 @@ def test_openai_compatible_payload_and_headers():
     payload = adapter._build_payload(req, stream=False)
     assert "response_format" in payload
     assert payload["response_format"]["type"] == "json_schema"
+
+
+def test_strip_thinking_tokens():
+    """Plan 1 P1-T6: Reasoning tokens (<think>...</think>) are stripped for voice path."""
+    from app.adapters.base import strip_thinking_tokens
+
+    raw = "<think>Let me formulate a compliant payment plan.</think>承知いたしました。来週のご入金で承ります。"
+    assert strip_thinking_tokens(raw) == "承知いたしました。来週のご入金で承ります。"
+
+    multiline = "<think>\nThinking about customer request...\nEvaluating FDCPA.\n</think>\nHello, thank you for calling."
+    assert strip_thinking_tokens(multiline) == "Hello, thank you for calling."
+
+    unclosed = "<think>Stream was aborted while thinking... Thank you"
+    assert strip_thinking_tokens(unclosed) == ""
+
+    clean = "Good morning, how can I help you today?"
+    assert strip_thinking_tokens(clean) == clean
