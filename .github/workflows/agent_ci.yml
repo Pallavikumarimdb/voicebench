@@ -22,7 +22,8 @@ jobs:
       - name: Install Python Dependencies
         run: |
           pip install --upgrade pip
-          pip install pytest pytest-asyncio pydantic fastapi httpx pyyaml tzdata langgraph prometheus_client cryptography
+          pip install pytest pytest-asyncio pydantic fastapi httpx pyyaml tzdata langgraph prometheus_client cryptography numpy pandas matplotlib tabulate
+          pip install -r eval/requirements.txt
 
       - name: Run Protocol Sync & Agent Unit Tests
         run: |
