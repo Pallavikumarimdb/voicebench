@@ -47,7 +47,7 @@ class OllamaAdapter(BaseAdapter):
             }
         }
         if request.json_schema:
-            payload["format"] = request.json_schema if isinstance(request.json_schema, dict) else "json"
+            payload["format"] = "json"
         if request.stop:
             payload["options"]["stop"] = request.stop
         return payload

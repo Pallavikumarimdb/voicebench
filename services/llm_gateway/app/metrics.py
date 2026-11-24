@@ -59,6 +59,13 @@ voiceai_guard_override_total = Counter(
     ["rule_id", "stage"]
 )
 
+# Schema retry on unsupported or failing structured backend outputs (Plan 1 Section 6 P3-T4)
+voiceai_schema_retry_total = Counter(
+    "voiceai_schema_retry_total",
+    "Total schema retry attempts on invalid structured outputs",
+    ["backend", "model"]
+)
+
 # End-to-end turn latency
 voiceai_turn_latency_seconds = Histogram(
     "voiceai_turn_latency_seconds",

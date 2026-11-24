@@ -28,7 +28,8 @@ from ..adapters import (
 from ..metrics import (
     voiceai_llm_requests_total,
     voiceai_llm_ttft_seconds,
-    voiceai_fallback_total
+    voiceai_fallback_total,
+    voiceai_schema_retry_total
 )
 from ..cancellation import cancellation_manager, ActiveRequest
 
@@ -114,8 +115,10 @@ def create_decision_record(
     matched_rule = rule_id or ("r_high_risk" if risk_tier == "high" else "r_default")
     if cancelled:
         matched_reason = "CLIENT_CANCELLED"
+    elif reason_code and reason_code not in ("RULE_MATCH", "DEFAULT"):
+        matched_reason = reason_code
     elif fallback_chain:
-        matched_reason = "BACKEND_ERROR"
+        matched_reason = fallback_chain[-1].get("reason", "BACKEND_ERROR")
     else:
         matched_reason = reason_code or "RULE_MATCH"
     matched_constraint = constraint_mode or ("strict" if risk_tier == "high" else "none")
@@ -467,6 +470,59 @@ async def chat_completions(
 
         from ..adapters.base import strip_thinking_tokens
         adapter_res.content = strip_thinking_tokens(adapter_res.content)
+
+        # Plan 1 Section 6 P3-T4: Unsupported-backend path (validate output, retry once with corrective prompt, fall back per policy)
+        if target_schema:
+            is_valid_json = False
+            try:
+                parsed_json = json.loads(adapter_res.content)
+                required_fields = target_schema.get("required", [])
+                if all(f in parsed_json for f in required_fields):
+                    is_valid_json = True
+            except Exception:
+                is_valid_json = False
+
+            if not is_valid_json:
+                voiceai_schema_retry_total.labels(backend=backend_name, model=req.model).inc()
+                logger.warning(f"Backend '{backend_name}' output failed schema validation. Retrying once with corrective prompt.")
+                req_fields = ", ".join(target_schema.get("required", ["intent", "next_state", "utterance"]))
+                corrective_messages = list(adapter_req.messages) + [
+                    {"role": "assistant", "content": adapter_res.content},
+                    {
+                        "role": "user",
+                        "content": f"Your previous response was not valid JSON conforming to the schema. Output ONLY a valid JSON object with keys: {req_fields}. Do not include markdown or explanations."
+                    }
+                ]
+                retry_req = AdapterRequest(
+                    model=adapter_req.model,
+                    messages=corrective_messages,
+                    temperature=0.1,
+                    max_tokens=adapter_req.max_tokens,
+                    stream=False,
+                    json_schema=target_schema
+                )
+                try:
+                    retry_res = await adapter.complete(retry_req)
+                    retry_res.content = strip_thinking_tokens(retry_res.content)
+                    retry_parsed = json.loads(retry_res.content)
+                    if all(f in retry_parsed for f in target_schema.get("required", [])):
+                        adapter_res = retry_res
+                        reason_code = "SCHEMA_RETRY"
+                    else:
+                        raise ValueError("Retry output still does not satisfy schema requirements")
+                except Exception as retry_err:
+                    logger.warning(f"Schema retry failed on '{backend_name}' ({retry_err}). Falling back per policy.")
+                    voiceai_fallback_total.labels(
+                        from_tier=tier_name,
+                        to_tier="stub",
+                        reason="SCHEMA_RETRY"
+                    ).inc()
+                    fallback_chain.append({"from": backend_name, "to": "stub", "reason": "SCHEMA_RETRY"})
+                    backend_name = "stub"
+                    adapter = registry.get("stub")
+                    adapter_res = await adapter.complete(adapter_req)
+                    adapter_res.content = strip_thinking_tokens(adapter_res.content)
+                    reason_code = "SCHEMA_RETRY"
 
         voiceai_llm_ttft_seconds.observe(adapter_res.ttft_ms / 1000.0)
         created_ts = int(time.time())
