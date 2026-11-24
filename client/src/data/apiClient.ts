@@ -232,6 +232,11 @@ export class ApiClient {
       method: 'POST',
     });
   }
+
+  /** Plan 1 P5-T8: Get public inference benchmark suite results */
+  async getBenchmarks(): Promise<any> {
+    return fetchJson('/api/results/benchmarks');
+  }
 }
 
 export const apiClient = new ApiClient();

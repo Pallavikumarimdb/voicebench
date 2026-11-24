@@ -87,10 +87,11 @@ const AUDIT_DIR = path.resolve(REPO_ROOT, 'services/agent/audit_logs');
 const RESULTS_DIR = path.resolve(REPO_ROOT, 'eval/agent/results');
 const PERSONAS_DIR = path.resolve(REPO_ROOT, 'eval/agent/personas');
 const LABELING_DIR = path.resolve(REPO_ROOT, 'eval/agent/labeling');
+const BENCHMARKS_DIR = path.resolve(REPO_ROOT, 'docs/benchmarks');
 export const RECORDINGS_DIR = path.resolve(REPO_ROOT, 'services/agent/recordings');
 
 // Whitelisted directories to prevent path traversal
-const ALLOWED_DIRS = [AUDIT_DIR, RESULTS_DIR, PERSONAS_DIR, LABELING_DIR, RECORDINGS_DIR];
+const ALLOWED_DIRS = [AUDIT_DIR, RESULTS_DIR, PERSONAS_DIR, LABELING_DIR, RECORDINGS_DIR, BENCHMARKS_DIR];
 
 export function isPathSafe(filePath: string): boolean {
   const resolved = path.resolve(filePath);
@@ -586,6 +587,23 @@ export async function handleDataApi(
         pareto,
         computedFinalViolations,
       });
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message });
+      return true;
+    }
+  }
+
+  // 3b. GET /api/results/benchmarks (Plan 1 Section 6 P5-T8)
+  if (req.method === 'GET' && pathname === '/api/results/benchmarks') {
+    try {
+      const summaryFile = path.join(BENCHMARKS_DIR, 'benchmarks_summary.json');
+      if (fs.existsSync(summaryFile)) {
+        const raw = fs.readFileSync(summaryFile, 'utf-8');
+        sendJson(res, 200, JSON.parse(raw));
+        return true;
+      }
+      sendJson(res, 200, { benchmarks: {} });
       return true;
     } catch (err: any) {
       sendJson(res, 500, { error: err.message });
