@@ -21,7 +21,8 @@ try:
         verify_policy_log,
         generate_ed25519_keypair,
         compute_hash,
-        AuditVerificationResult
+        AuditVerificationResult,
+        HAS_CRYPTOGRAPHY
     )
 except ImportError:
     from services.agent.app.audit import (
@@ -31,7 +32,8 @@ except ImportError:
         verify_policy_log,
         generate_ed25519_keypair,
         compute_hash,
-        AuditVerificationResult
+        AuditVerificationResult,
+        HAS_CRYPTOGRAPHY
     )
 
 
@@ -61,6 +63,8 @@ def test_schema_v1_backwards_compatible(temp_dir):
 
 def test_schema_v2_and_chain_head_ed25519(temp_dir):
     """Schema v2 logs with Ed25519 signed chain head must verify successfully."""
+    if not HAS_CRYPTOGRAPHY:
+        pytest.skip("cryptography package not installed; skipping Ed25519 test")
     priv_pem, pub_pem = generate_ed25519_keypair()
     priv_path = os.path.join(temp_dir, "priv.pem")
     pub_path = os.path.join(temp_dir, "pub.pem")
@@ -248,6 +252,8 @@ def test_tamper_truncate_head_mismatch(temp_dir):
 
 def test_tamper_wrong_signing_key(temp_dir):
     """Tamper Test 5: Verifying chain_head with wrong Ed25519 public key or wrong HMAC key fails."""
+    if not HAS_CRYPTOGRAPHY:
+        pytest.skip("cryptography package not installed; skipping Ed25519 test")
     priv1, pub1 = generate_ed25519_keypair()
     priv2, pub2 = generate_ed25519_keypair()
 
