@@ -22,7 +22,9 @@
     "bench:endpointing": "python eval/inference/endpointing/benchmark.py",
     "bench:asr": "python eval/inference/asr/benchmark.py",
     "bench:llm": "python eval/inference/llm/benchmark.py",
-    "bench:routing": "python eval/inference/routing/benchmark.py"
+    "bench:routing": "python eval/inference/routing/benchmark.py",
+    "bench:index": "python scripts/generate_benchmarks_index.py",
+    "bench:all": "npm run bench:latency && npm run bench:endpointing && npm run bench:asr && npm run bench:llm && npm run bench:routing && npm run bench:index"
   },
   "devDependencies": {
     "turbo": "^1.12.5",
