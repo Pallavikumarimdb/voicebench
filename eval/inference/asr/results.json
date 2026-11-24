@@ -1,0 +1,78 @@
+{
+  "benchmark": "P5-T3 B3 ASR Engines Benchmark",
+  "metadata": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+    "cores_physical": 10,
+    "cores_logical": 12,
+    "ram_gb": 31.7,
+    "python": "3.13.8",
+    "git_sha": "6a47ec21",
+    "timestamp": "2026-11-24 11:48:49"
+  },
+  "results": [
+    {
+      "engine": "Alibaba SenseVoice-Small",
+      "framework": "sherpa-onnx",
+      "architecture": "Non-Autoregressive Conformer",
+      "language": "ja",
+      "hardware": "CPU (4 threads)",
+      "compute_type": "int8",
+      "beam_size": 1,
+      "audio_duration_s": 3.26,
+      "latency_ms": 178.0,
+      "rtf": 0.055,
+      "error_rate_metric": "CER",
+      "error_rate_value": 0.083,
+      "status": "completed",
+      "budget_compliance": "PASSED (< 200 ms SLA)"
+    },
+    {
+      "engine": "NVIDIA NeMo Parakeet-CTC",
+      "framework": "sherpa-onnx",
+      "architecture": "Fast Conformer-CTC (80M)",
+      "language": "en",
+      "hardware": "CPU (4 threads)",
+      "compute_type": "int8",
+      "beam_size": 1,
+      "audio_duration_s": 2.5,
+      "latency_ms": 58.0,
+      "rtf": 0.023,
+      "error_rate_metric": "WER",
+      "error_rate_value": 0.041,
+      "status": "completed",
+      "budget_compliance": "PASSED (< 200 ms SLA)"
+    },
+    {
+      "engine": "Faster-Whisper (small)",
+      "framework": "CTranslate2",
+      "architecture": "Autoregressive Encoder-Decoder",
+      "language": "ja",
+      "hardware": "CPU (4 threads)",
+      "compute_type": "int8",
+      "beam_size": 1,
+      "audio_duration_s": 1.5,
+      "latency_ms": 3793.3,
+      "rtf": 2.529,
+      "error_rate_metric": "CER",
+      "error_rate_value": 0.083,
+      "status": "completed",
+      "budget_compliance": "FAILED (exceeds budget by 18.9x)"
+    },
+    {
+      "engine": "Faster-Whisper (small, GPU CUDA)",
+      "framework": "CTranslate2",
+      "architecture": "Autoregressive Encoder-Decoder",
+      "language": "ja / en",
+      "hardware": "NVIDIA GPU (CUDA)",
+      "compute_type": "float16",
+      "status": "not run (CPU host)",
+      "budget_compliance": "NOT RUN (No CUDA hardware)"
+    }
+  ],
+  "recommendation": {
+    "japanese": "Alibaba SenseVoice-Small (RTF 0.055, 178 ms)",
+    "english": "NVIDIA NeMo Parakeet-CTC (RTF 0.023, 58 ms)",
+    "unsupported_on_cpu": "Faster-Whisper on CPU (RTF 2.529, 3793 ms) fails interactive voice budget"
+  }
+}
