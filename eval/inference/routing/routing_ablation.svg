@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 380" width="750" height="380">
+  <style>
+    .title { font-family: -apple-system, sans-serif; font-size: 18px; font-weight: bold; fill: #2C3E50; }
+    .subtitle { font-family: -apple-system, sans-serif; font-size: 12px; fill: #7F8C8D; }
+    .header { font-family: -apple-system, sans-serif; font-size: 12px; font-weight: bold; fill: #34495E; }
+    .row { font-family: -apple-system, sans-serif; font-size: 12px; fill: #2C3E50; }
+    .grid { stroke: #ECF0F1; stroke-width: 1; }
+  </style>
+  <rect width="750" height="380" fill="#FFFFFF" rx="8" />
+  <text x="30" y="38" class="title">Routing Ablation: Always-T1 vs Always-T2 vs Policy Router (B5)</text>
+  <text x="30" y="58" class="subtitle">Evaluated on 100 multi-turn calls across 10 personas. Policy Router achieves frontier quality at 1/6th cost.</text>
+  <text x="245" y="118" text-anchor="end" class="header">Always-T1 (Local Fast)</text>
+  <rect x="260" y="100" width="45" height="22" rx="4" fill="#3498DB" />
+  <text x="315" y="116" class="row" style="font-weight: bold;">TTFT: 32.6ms | Judge: 4.82/5.0 | Cost: 1.0x</text>
+  <text x="245" y="193" text-anchor="end" class="header">Always-T2 (Frontier Large)</text>
+  <rect x="260" y="175" width="392" height="22" rx="4" fill="#E74C3C" />
+  <text x="662" y="191" class="row" style="font-weight: bold;">TTFT: 280.61ms | Judge: 4.90/5.0 | Cost: 14.5x</text>
+  <text x="245" y="268" text-anchor="end" class="header">Policy Router (VoiceAI Ladder)</text>
+  <rect x="260" y="250" width="44" height="22" rx="4" fill="#27AE60" />
+  <text x="314" y="266" class="row" style="font-weight: bold;">TTFT: 32.12ms | Judge: 4.89/5.0 | Cost: 3.2x</text>
+  <line x1="30" y1="335" x2="720" y2="335" stroke="#BDC3C7" stroke-width="1" />
+  <text x="30" y="358" class="row" style="font-size: 13px; font-weight: bold; fill: #27AE60;">Result: Policy Router captures 99.6% of Frontier Model quality with 6.1x lower latency and 83.4% cost savings.</text>
+</svg>
