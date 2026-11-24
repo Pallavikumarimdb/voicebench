@@ -146,6 +146,7 @@ export interface BrainResponse {
   text: string;
   events: BrainEvent[];
   metrics: BrainMetrics;
+  x_voiceai?: Record<string, any>;
 }
 
 // Plan 1 Section 6 P3-T2: Constrained Decoding Brain Turn Schema v1

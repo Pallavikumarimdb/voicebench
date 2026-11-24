@@ -44,6 +44,7 @@ class BrainResponse(BaseModel):
     text: str
     events: List[BrainEvent] = Field(default_factory=list)
     metrics: BrainMetrics
+    x_voiceai: Optional[Dict[str, Any]] = None
 
 # Plan 1 Section 6 P3-T2: Constrained Decoding Brain Turn Schema v1
 BrainTurnIntent = Literal[
