@@ -51,6 +51,7 @@ class ChatCompletionRequest(BaseModel):
 
 
 from ..router.engine import RoutingInput, RoutingDecision, evaluate_routing_rule
+from ..router.breaker import circuit_breaker_registry
 
 
 class CancelRequest(BaseModel):
@@ -69,12 +70,14 @@ def resolve_backend(
 ) -> RoutingDecision:
     """Resolves routing decision using the pure rule engine (P2-T1)."""
     policy = config.get_policy(profile)
+    open_tiers = circuit_breaker_registry.get_open_tiers()
     r_input = RoutingInput(
         profile=profile,
         dialogue_state=dialogue_state,
         risk_tier=risk_tier,
         asr_confidence=asr_confidence,
         utterance_tokens=utterance_tokens,
+        circuit_open_tiers=open_tiers
     )
     decision = evaluate_routing_rule(policy, r_input)
 
@@ -238,8 +241,11 @@ async def stream_chat_generator(
                 yield item
                 if cancelled:
                     break
-        except (httpx.ConnectError, httpx.RequestError) as net_err:
+            if not cancelled:
+                circuit_breaker_registry.record_success(backend_name)
+        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError) as net_err:
             if first_token and not cancelled:
+                circuit_breaker_registry.record_failure(backend_name)
                 logger.warning(
                     f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub'"
                 )
@@ -255,7 +261,10 @@ async def stream_chat_generator(
                     yield item
                     if cancelled:
                         break
+                if not cancelled:
+                    circuit_breaker_registry.record_success(backend_name)
             else:
+                circuit_breaker_registry.record_failure(backend_name)
                 raise
 
         # Final chunk carrying Section 5.2 decision record
@@ -398,7 +407,9 @@ async def chat_completions(
     try:
         try:
             adapter_res = await adapter.complete(adapter_req)
-        except (httpx.ConnectError, httpx.RequestError) as net_err:
+            circuit_breaker_registry.record_success(backend_name)
+        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError) as net_err:
+            circuit_breaker_registry.record_failure(backend_name)
             logger.warning(
                 f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub'"
             )
@@ -411,6 +422,7 @@ async def chat_completions(
             backend_name = "stub"
             adapter = registry.get("stub")
             adapter_res = await adapter.complete(adapter_req)
+            circuit_breaker_registry.record_success(backend_name)
 
         from ..adapters.base import strip_thinking_tokens
         adapter_res.content = strip_thinking_tokens(adapter_res.content)
