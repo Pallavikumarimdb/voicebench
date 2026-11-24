@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar, Topbar, ActiveTab } from './ui/Navbar.tsx';
+import { LandingPage } from './ui/LandingPage.tsx';
+import { DeveloperDocs } from './ui/DeveloperDocs.tsx';
 import { LiveCallPanel } from './ui/LiveCallPanel.tsx';
 import { CallList } from './ui/CallList.tsx';
 import { CallInspector } from './ui/CallInspector.tsx';
@@ -14,7 +16,7 @@ import { apiClient } from './data/apiClient.ts';
 import { CallSummaryItem, CallDetail } from './data/types.ts';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('live');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
   const [activeCallDetail, setActiveCallDetail] = useState<CallDetail | null>(null);
   const [calls, setCalls] = useState<CallSummaryItem[]>([]);
@@ -34,6 +36,15 @@ export const App: React.FC = () => {
         setSelectedCallId(id);
       } else if (path === '/calls') {
         setActiveTab('calls');
+        setSelectedCallId(null);
+      } else if (path === '/home') {
+        setActiveTab('home');
+        setSelectedCallId(null);
+      } else if (path === '/docs') {
+        setActiveTab('docs');
+        setSelectedCallId(null);
+      } else if (path === '/live') {
+        setActiveTab('live');
         setSelectedCallId(null);
       } else if (path === '/studio') {
         setActiveTab('studio');
@@ -57,7 +68,7 @@ export const App: React.FC = () => {
         setActiveTab('translate');
         setSelectedCallId(null);
       } else {
-        setActiveTab('live');
+        setActiveTab('home');
         setSelectedCallId(null);
       }
     }
@@ -135,9 +146,17 @@ export const App: React.FC = () => {
       />
 
       <div className="main-col">
-        <Topbar activeTab={activeTab} apiOnline={apiOnline} onHome={() => navigateTo('live', null)} onSelectTab={(tab) => navigateTo(tab, null)} />
+        <Topbar activeTab={activeTab} apiOnline={apiOnline} onHome={() => navigateTo('home', null)} onSelectTab={(tab) => navigateTo(tab, null)} />
         {/* Main View Router */}
         <main style={{ flex: 1, minWidth: 0 }}>
+        {activeTab === 'home' && (
+          <LandingPage onNavigate={(tab) => navigateTo(tab, null)} />
+        )}
+
+        {activeTab === 'docs' && (
+          <DeveloperDocs onNavigate={(tab) => navigateTo(tab, null)} />
+        )}
+
         {activeTab === 'live' && (
           <LiveCallPanel onInspectCall={(id) => navigateTo('calls', id)} />
         )}
