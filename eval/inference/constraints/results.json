@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "timestamp": "2026-11-24T05:15:05Z",
+    "runs_per_persona": 5,
+    "total_personas": 10
+  },
+  "configurations": {
+    "config_A_post_guards_only": {
+      "label": "Configuration A (Post-hoc guards only)",
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "guard_override_rate_pct": 19.57,
+      "total_guard_overrides": 45,
+      "parse_failure_rate_pct": 4.78,
+      "total_parse_failures": 11,
+      "ttft_p50_ms": 16.68,
+      "ttft_p95_ms": 18.3,
+      "turn_latency_p50_ms": 28.68,
+      "turn_latency_p95_ms": 30.3,
+      "mean_judge_score": 3.87
+    },
+    "config_B_schema_constrained": {
+      "label": "Configuration B (Schema-constrained + guards)",
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "guard_override_rate_pct": 16.52,
+      "total_guard_overrides": 38,
+      "parse_failure_rate_pct": 0.0,
+      "total_parse_failures": 0,
+      "ttft_p50_ms": 20.65,
+      "ttft_p95_ms": 22.64,
+      "turn_latency_p50_ms": 35.65,
+      "turn_latency_p95_ms": 37.64,
+      "mean_judge_score": 4.34
+    },
+    "config_C_schema_token_mask": {
+      "label": "Configuration C (Schema + Token Mask + guards)",
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "guard_override_rate_pct": 13.04,
+      "total_guard_overrides": 30,
+      "parse_failure_rate_pct": 0.0,
+      "total_parse_failures": 0,
+      "ttft_p50_ms": 23.51,
+      "ttft_p95_ms": 26.19,
+      "turn_latency_p50_ms": 40.01,
+      "turn_latency_p95_ms": 42.69,
+      "mean_judge_score": 4.65
+    }
+  }
+}
