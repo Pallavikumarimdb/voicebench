@@ -6,7 +6,6 @@ export type ActiveTab = 'home' | 'docs' | 'live' | 'studio' | 'tools' | 'telepho
 interface NavbarProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
-  onNavigateExternal?: (tab: ActiveTab) => void;
   apiOnline: boolean;
 }
 
@@ -51,7 +50,7 @@ const TITLES: Record<ActiveTab, { crumb: string; title: string }> = {
   results: { crumb: 'Measure', title: 'Results' },
 };
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onNavigateExternal, apiOnline }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, apiOnline }) => {
   return (
     <>
       <aside className="sidebar">
@@ -105,32 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onNaviga
             <span style={{ fontWeight: 600 }}>{apiOnline ? 'API · :8443' : 'API unreachable'}</span>
           </div>
 
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button
-              onClick={() => onNavigateExternal?.('home')}
-              style={{
-                background: 'none', border: 'none', color: '#94a3b8', fontSize: 12,
-                cursor: 'pointer', textAlign: 'left', padding: '4px 6px', borderRadius: 4,
-                display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
-            >
-              <span>🌐</span> Platform Home ↗
-            </button>
-            <button
-              onClick={() => onNavigateExternal?.('docs')}
-              style={{
-                background: 'none', border: 'none', color: '#94a3b8', fontSize: 12,
-                cursor: 'pointer', textAlign: 'left', padding: '4px 6px', borderRadius: 4,
-                display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
-            >
-              <span>📖</span> Developer Docs ↗
-            </button>
-          </div>
+  
         </div>
       </aside>
     </>

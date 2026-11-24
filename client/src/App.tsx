@@ -150,7 +150,6 @@ export const App: React.FC = () => {
       <Navbar
         activeTab={activeTab}
         onSelectTab={(tab) => navigateTo(tab, null)}
-        onNavigateExternal={(dest) => navigateTo(dest, null)}
         apiOnline={apiOnline}
       />
 
