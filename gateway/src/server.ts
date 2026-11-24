@@ -99,7 +99,9 @@ function echoOverlap(finalText: string, agentText: string): { ratio: number; sha
   return { ratio, shared };
 }
 
-// HTTP Server for metrics, health, and reviewer data API
+let isDraining = false;
+
+// HTTP Server for metrics, health, drain, and reviewer data API
 const server = http.createServer(async (req, res) => {
   // 1. Data API endpoints for reviewer UI (/api/*)
   if (req.url?.startsWith('/api/')) {
@@ -113,10 +115,33 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 3. Health check endpoint
-  if (req.url === '/health') {
+  // 3. Health & Readiness check endpoints (/health and /healthz)
+  if ((req.url === '/health' || req.url === '/healthz') && req.method === 'GET') {
+    if (isDraining) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'draining',
+        activeSessions: sessionManager.getAll().length,
+        message: 'Node is draining. No new connections accepted.'
+      }));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', activeSessions: sessionManager.getAll().length }));
+    return;
+  }
+
+  // 4. Graceful Drain trigger (P6-T3: called by preStop hook or SIGTERM)
+  if (req.url === '/drain' && (req.method === 'POST' || req.method === 'GET')) {
+    isDraining = true;
+    const activeCount = sessionManager.getAll().length;
+    console.log(`[Gateway] Graceful drain initiated. Active sessions: ${activeCount}. New sessions rejected.`);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'draining',
+      activeSessions: activeCount,
+      message: 'Drain mode enabled. Existing calls will drain naturally.'
+    }));
     return;
   }
 
@@ -149,6 +174,17 @@ server.on('upgrade', (request, socket, head) => {
 });
 
 wss.on('connection', (clientWs: WebSocket) => {
+  // P6-T3: Reject new sessions immediately if gateway is draining
+  if (isDraining) {
+    clientWs.send(JSON.stringify({
+      type: 'error',
+      code: 'SERVER_DRAINING',
+      message: 'Server is undergoing graceful drain; please connect to another replica.'
+    }));
+    clientWs.close(1013, 'Server draining');
+    return;
+  }
+
   // [C2] Enforce hard max session cap to prevent DoS / memory exhaustion
   if (sessionManager.getAll().length >= MAX_SESSIONS) {
     clientWs.send(JSON.stringify({ type: 'error', code: 'SERVER_FULL', message: 'Max concurrent sessions reached' }));
@@ -715,3 +751,36 @@ server.listen(PORT, HOST, () => {
   console.log(`[Gateway] Server running on http://${HOST}:${PORT}`);
   console.log(`[Gateway] Metrics available at http://${HOST}:${PORT}/metrics`);
 });
+
+// P6-T3: Graceful drain shutdown on SIGTERM / SIGINT
+function handleShutdown(signal: string) {
+  console.log(`[Gateway] Received ${signal}. Initiating graceful drain...`);
+  isDraining = true;
+  const activeCount = sessionManager.getAll().length;
+  console.log(`[Gateway] Draining ${activeCount} active sessions (grace period up to 900s)...`);
+
+  const checkDrain = () => {
+    const remaining = sessionManager.getAll().length;
+    if (remaining === 0) {
+      console.log('[Gateway] All sessions drained cleanly. Exiting.');
+      server.close(() => {
+        process.exit(0);
+      });
+    } else {
+      console.log(`[Gateway] Waiting for ${remaining} active sessions to complete...`);
+    }
+  };
+
+  const drainInterval = setInterval(checkDrain, 2000);
+  checkDrain();
+
+  // Hard safety timeout of 900s
+  setTimeout(() => {
+    clearInterval(drainInterval);
+    console.warn('[Gateway] Drain grace period expired. Forcing shutdown.');
+    process.exit(0);
+  }, 900_000).unref();
+}
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));

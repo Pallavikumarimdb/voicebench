@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { WordTs, Utterance } from '@voice/protocol';
+import type { WordTs, Utterance } from '@voice/protocol';
 
 export interface Session {
   id: string;
