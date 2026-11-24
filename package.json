@@ -13,6 +13,7 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "start": "python scripts/start_all.py --mode all",
     "start:agent": "python scripts/start_all.py --mode agent",
     "start:translator": "python scripts/start_all.py --mode translator",
     "start:all": "python scripts/start_all.py --mode all",
