@@ -243,26 +243,32 @@ async def stream_chat_generator(
                     break
             if not cancelled:
                 circuit_breaker_registry.record_success(backend_name)
-        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError) as net_err:
+        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError, ConnectionResetError, OSError) as net_err:
             if first_token and not cancelled:
                 circuit_breaker_registry.record_failure(backend_name)
+                fallback_reason = "TTFT_BUDGET_EXCEEDED" if isinstance(net_err, (TimeoutError, asyncio.TimeoutError, BackendTimeoutError)) or "ttft" in str(net_err).lower() else "BACKEND_ERROR"
                 logger.warning(
-                    f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub'"
+                    f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub' with reason {fallback_reason}"
                 )
                 voiceai_fallback_total.labels(
                     from_tier=tier_name,
                     to_tier="stub",
-                    reason="BACKEND_ERROR"
+                    reason=fallback_reason
                 ).inc()
-                fallback_chain.append({"from": backend_name, "to": "stub", "reason": "BACKEND_ERROR"})
+                fallback_chain.append({"from": backend_name, "to": "stub", "reason": fallback_reason})
                 backend_name = "stub"
                 adapter = registry.get("stub")
-                async for item in _run_stream(adapter, backend_name):
-                    yield item
-                    if cancelled:
-                        break
-                if not cancelled:
-                    circuit_breaker_registry.record_success(backend_name)
+                try:
+                    async for item in _run_stream(adapter, backend_name):
+                        yield item
+                        if cancelled:
+                            break
+                    if not cancelled:
+                        circuit_breaker_registry.record_success(backend_name)
+                except Exception as stream_err:
+                    circuit_breaker_registry.record_failure(backend_name)
+                    yield f"event: error\ndata: {json.dumps({'error': 'All backends failed', 'reason_code': 'ALL_BACKENDS_FAILED'})}\n\n"
+                    return
             else:
                 circuit_breaker_registry.record_failure(backend_name)
                 raise
@@ -315,6 +321,9 @@ async def stream_chat_generator(
                 tier=tier_name,
                 status="success"
             ).inc()
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         logger.error(f"Stream generation error ({type(exc).__name__}): {exc}")
@@ -372,6 +381,12 @@ async def chat_completions(
         f"tier={tier_name}, backend={backend_name}, risk_tier={risk_tier}, rule={rule_id}"
     )
 
+    if routing_dec.tier == "t3_safe_mode" or routing_dec.reason_code == "ALL_BACKENDS_FAILED":
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "All backends failed", "reason_code": "ALL_BACKENDS_FAILED"}
+        )
+
     if req.stream:
         return StreamingResponse(
             stream_chat_generator(
@@ -406,23 +421,37 @@ async def chat_completions(
 
     try:
         try:
+            policy = config.get_policy(profile)
+            ttft_budget_ms = policy.get("budgets", {}).get("ttft_ms", 450.0)
             adapter_res = await adapter.complete(adapter_req)
+            if adapter_res.ttft_ms > ttft_budget_ms and backend_name != "stub":
+                raise BackendTimeoutError(f"TTFT {adapter_res.ttft_ms}ms exceeded budget {ttft_budget_ms}ms")
             circuit_breaker_registry.record_success(backend_name)
-        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError) as net_err:
+        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError, ConnectionResetError, OSError) as net_err:
             circuit_breaker_registry.record_failure(backend_name)
+            if backend_name == "stub":
+                raise
+            fallback_reason = "TTFT_BUDGET_EXCEEDED" if isinstance(net_err, (TimeoutError, asyncio.TimeoutError, BackendTimeoutError)) or "ttft" in str(net_err).lower() else "BACKEND_ERROR"
             logger.warning(
-                f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub'"
+                f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub' with reason {fallback_reason}"
             )
             voiceai_fallback_total.labels(
                 from_tier=tier_name,
                 to_tier="stub",
-                reason="BACKEND_ERROR"
+                reason=fallback_reason
             ).inc()
-            fallback_chain.append({"from": backend_name, "to": "stub", "reason": "BACKEND_ERROR"})
+            fallback_chain.append({"from": backend_name, "to": "stub", "reason": fallback_reason})
             backend_name = "stub"
             adapter = registry.get("stub")
-            adapter_res = await adapter.complete(adapter_req)
-            circuit_breaker_registry.record_success(backend_name)
+            try:
+                adapter_res = await adapter.complete(adapter_req)
+                circuit_breaker_registry.record_success(backend_name)
+            except Exception as stub_err:
+                circuit_breaker_registry.record_failure(backend_name)
+                raise HTTPException(
+                    status_code=503,
+                    detail={"error": f"All backends failed: {stub_err}", "reason_code": "ALL_BACKENDS_FAILED"}
+                )
 
         from ..adapters.base import strip_thinking_tokens
         adapter_res.content = strip_thinking_tokens(adapter_res.content)
@@ -499,6 +528,9 @@ async def chat_completions(
             status="5xx"
         ).inc()
         raise HTTPException(status_code=502, detail="Upstream backend internal error")
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         logger.error(f"Completion failed ({type(exc).__name__}): {exc}")
