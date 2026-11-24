@@ -222,11 +222,12 @@ class AuditLogger:
         guard_events: Optional[List[Dict[str, Any]]] = None,
         route: Optional[Dict[str, Any]] = None,
         timings: Optional[Dict[str, Any]] = None,
+        post_guard_applied: bool = True,
         client_generated: bool = False,
         extra_fields: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Appends a Schema v2 hash-chained audit record per Plan 1 Section 5.3.
+        Appends a Schema v2 hash-chained audit record per Plan 1 Section 5.3 & P2-T6.
         """
         self.entry_index += 1
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
@@ -240,6 +241,7 @@ class AuditLogger:
             "agent_attempted_text": agent_attempted_text,
             "agent_final_text": agent_final_text,
             "guard_events": guard_events or [],
+            "post_guard_applied": post_guard_applied,
             "route": route or {"tier": "t0_fast_path"},
             "timings": timings or {
                 "vad_end_to_first_audio_ms": 0,

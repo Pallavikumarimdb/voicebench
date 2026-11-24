@@ -287,7 +287,7 @@ async def turn(req: BrainRequest) -> BrainResponse:
             model=raw_metrics.get("model", variant)
         )
 
-        # Audit Record Schema v2 with routing decision record (Plan 1 Section 5.3 & P1-T4)
+        # Audit Record Schema v2 with routing decision record and post-guard proof (Plan 1 P1-T4 & P2-T6)
         route_decision = turn_result.get("x_voiceai") or {"tier": "t0_fast_path"}
         audit_logger.append_turn(
             turn_index=state.get("turn_count", req.uttId),
@@ -295,6 +295,7 @@ async def turn(req: BrainRequest) -> BrainResponse:
             agent_attempted_text=turn_result.get("attempted_text", reply_text),
             agent_final_text=reply_text,
             guard_events=turn_result.get("guard_events", []),
+            post_guard_applied=True,
             route=route_decision,
             timings={
                 "vad_end_to_first_audio_ms": 0,
