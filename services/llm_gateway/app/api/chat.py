@@ -50,33 +50,42 @@ class ChatCompletionRequest(BaseModel):
     backend: Optional[str] = None  # explicit override for tests / routing
 
 
+from ..router.engine import RoutingInput, RoutingDecision, evaluate_routing_rule
+
+
 class CancelRequest(BaseModel):
     completion_id: Optional[str] = None
     session_id: Optional[str] = None
     turn_id: Optional[str] = None
 
 
-def resolve_backend(req: ChatCompletionRequest, profile: str, risk_tier: str) -> tuple[str, str]:
-    """Resolves tier and backend name from request and policy."""
-    if req.backend:
-        return "t1_local", req.backend
-
-    if req.model == "stub-model" or req.model.startswith("stub"):
-        return "t1_local", "stub"
-
+def resolve_backend(
+    req: ChatCompletionRequest,
+    profile: str,
+    risk_tier: str,
+    dialogue_state: Optional[str] = None,
+    asr_confidence: Optional[float] = None,
+    utterance_tokens: int = 0
+) -> RoutingDecision:
+    """Resolves routing decision using the pure rule engine (P2-T1)."""
     policy = config.get_policy(profile)
-    tiers = policy.get("tiers", {})
+    r_input = RoutingInput(
+        profile=profile,
+        dialogue_state=dialogue_state,
+        risk_tier=risk_tier,
+        asr_confidence=asr_confidence,
+        utterance_tokens=utterance_tokens,
+    )
+    decision = evaluate_routing_rule(policy, r_input)
 
-    tier_name = "t1_local"
-    if risk_tier == "high":
-        for rule in policy.get("rules", []):
-            if rule.get("when", {}).get("risk_tier") == "high":
-                tier_name = rule.get("route", "t1_local")
-                break
+    # Respect explicit overrides for testing
+    if req.backend:
+        decision.backend = req.backend
+    elif req.model == "stub-model" or req.model.startswith("stub"):
+        decision.backend = "stub"
+        decision.model = "stub"
 
-    tier_cfg = tiers.get(tier_name, {})
-    backend_name = tier_cfg.get("backend", "ollama_local")
-    return tier_name, backend_name
+    return decision
 
 
 def create_decision_record(
@@ -90,26 +99,31 @@ def create_decision_record(
     tokens_out: int = 0,
     cached_tokens: int = 0,
     cancelled: bool = False,
-    fallback_chain: Optional[List[Dict[str, str]]] = None
+    fallback_chain: Optional[List[Dict[str, str]]] = None,
+    rule_id: Optional[str] = None,
+    reason_code: Optional[str] = None,
+    constraint_mode: Optional[str] = None
 ) -> Dict[str, Any]:
     """Generates the Section 5.2 x_voiceai decision record."""
     policy_ver = config.get_policy_version(profile)
-    rule_id = "r_high_risk" if risk_tier == "high" else "r_default"
-    reason_code = "RULE_MATCH"
+    matched_rule = rule_id or ("r_high_risk" if risk_tier == "high" else "r_default")
     if cancelled:
-        reason_code = "CLIENT_CANCELLED"
+        matched_reason = "CLIENT_CANCELLED"
     elif fallback_chain:
-        reason_code = "BACKEND_ERROR"
+        matched_reason = "BACKEND_ERROR"
+    else:
+        matched_reason = reason_code or "RULE_MATCH"
+    matched_constraint = constraint_mode or ("strict" if risk_tier == "high" else "none")
 
     return {
         "tier": tier,
         "backend": backend,
         "model": model,
-        "rule_id": rule_id,
-        "reason_code": reason_code,
+        "rule_id": matched_rule,
+        "reason_code": matched_reason,
         "policy_version": policy_ver,
         "cache": "miss",
-        "constraint_mode": "schema+mask" if risk_tier == "high" else "none",
+        "constraint_mode": matched_constraint,
         "fallback_chain": fallback_chain or [],
         "ttft_ms": max(0, int(ttft_ms)),
         "tokens_in": tokens_in,
@@ -127,7 +141,10 @@ async def stream_chat_generator(
     session_id: str,
     turn_id: str,
     profile: str,
-    risk_tier: str
+    risk_tier: str,
+    rule_id: str = "r_default",
+    reason_code: str = "RULE_MATCH",
+    constraint_mode: str = "none"
 ) -> AsyncGenerator[str, None]:
     start_time = time.monotonic()
     completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
@@ -254,7 +271,10 @@ async def stream_chat_generator(
             tokens_out=total_tokens_out,
             cached_tokens=cached_tokens,
             cancelled=is_cancelled,
-            fallback_chain=fallback_chain
+            fallback_chain=fallback_chain,
+            rule_id=rule_id,
+            reason_code=reason_code,
+            constraint_mode=constraint_mode
         )
         final_chunk = {
             "id": completion_id,
@@ -323,16 +343,33 @@ async def chat_completions(
         "turn_id": turn_id
     })
 
-    tier_name, backend_name = resolve_backend(req, profile, risk_tier)
+    u_tokens = int(x_voiceai_utterance_tokens) if x_voiceai_utterance_tokens and x_voiceai_utterance_tokens.isdigit() else 0
+    asr_conf = float(x_voiceai_asr_confidence) if x_voiceai_asr_confidence else None
+
+    routing_dec = resolve_backend(
+        req, profile, risk_tier,
+        dialogue_state=x_voiceai_dialogue_state,
+        asr_confidence=asr_conf,
+        utterance_tokens=u_tokens
+    )
+    tier_name = routing_dec.tier
+    backend_name = routing_dec.backend
+    rule_id = routing_dec.rule_id
+    reason_code = routing_dec.reason_code
+    constraint_mode = routing_dec.constraint_mode
 
     logger.info(
         f"Incoming chat completion: model={req.model}, stream={req.stream}, "
-        f"tier={tier_name}, backend={backend_name}, risk_tier={risk_tier}"
+        f"tier={tier_name}, backend={backend_name}, risk_tier={risk_tier}, rule={rule_id}"
     )
 
     if req.stream:
         return StreamingResponse(
-            stream_chat_generator(http_request, req, tier_name, backend_name, session_id, turn_id, profile, risk_tier),
+            stream_chat_generator(
+                http_request, req, tier_name, backend_name,
+                session_id, turn_id, profile, risk_tier,
+                rule_id=rule_id, reason_code=reason_code, constraint_mode=constraint_mode
+            ),
             media_type="text/event-stream"
         )
 
@@ -392,7 +429,10 @@ async def chat_completions(
             tokens_out=adapter_res.tokens_out,
             cached_tokens=adapter_res.cached_tokens,
             cancelled=active_req.cancelled,
-            fallback_chain=fallback_chain
+            fallback_chain=fallback_chain,
+            rule_id=rule_id,
+            reason_code=reason_code,
+            constraint_mode=constraint_mode
         )
 
         response_body = {
