@@ -13,3 +13,4 @@ resources:
   - stt.yaml
   - tts.yaml
   - ingress.yaml
+  - keda-scaledobject.yaml
