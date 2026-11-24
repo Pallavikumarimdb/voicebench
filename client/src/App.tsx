@@ -136,27 +136,34 @@ export const App: React.FC = () => {
     fetchDetail();
   }, [selectedCallId]);
 
+  if (activeTab === 'home') {
+    return <LandingPage onNavigate={(tab) => navigateTo(tab, null)} />;
+  }
+
+  if (activeTab === 'docs') {
+    return <DeveloperDocs onNavigate={(tab) => navigateTo(tab, null)} />;
+  }
+
   return (
     <div className="shell">
       {/* Sidebar */}
       <Navbar
         activeTab={activeTab}
         onSelectTab={(tab) => navigateTo(tab, null)}
+        onNavigateExternal={(dest) => navigateTo(dest, null)}
         apiOnline={apiOnline}
       />
 
       <div className="main-col">
-        <Topbar activeTab={activeTab} apiOnline={apiOnline} onHome={() => navigateTo('home', null)} onSelectTab={(tab) => navigateTo(tab, null)} />
+        <Topbar
+          activeTab={activeTab}
+          apiOnline={apiOnline}
+          onHome={() => navigateTo('home', null)}
+          onDocs={() => navigateTo('docs', null)}
+          onSelectTab={(tab) => navigateTo(tab, null)}
+        />
         {/* Main View Router */}
         <main style={{ flex: 1, minWidth: 0 }}>
-        {activeTab === 'home' && (
-          <LandingPage onNavigate={(tab) => navigateTo(tab, null)} />
-        )}
-
-        {activeTab === 'docs' && (
-          <DeveloperDocs onNavigate={(tab) => navigateTo(tab, null)} />
-        )}
-
         {activeTab === 'live' && (
           <LiveCallPanel onInspectCall={(id) => navigateTo('calls', id)} />
         )}

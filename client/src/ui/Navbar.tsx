@@ -6,17 +6,11 @@ export type ActiveTab = 'home' | 'docs' | 'live' | 'studio' | 'tools' | 'telepho
 interface NavbarProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
+  onNavigateExternal?: (tab: ActiveTab) => void;
   apiOnline: boolean;
 }
 
 const GROUPS: { section: string; items: { id: ActiveTab; label: string; desc: string }[] }[] = [
-  {
-    section: 'Overview',
-    items: [
-      { id: 'home', label: 'Platform Home', desc: 'Landing & stats' },
-      { id: 'docs', label: 'Developer Docs', desc: 'Architecture & API' },
-    ],
-  },
   {
     section: 'Build',
     items: [
@@ -44,8 +38,8 @@ const GROUPS: { section: string; items: { id: ActiveTab; label: string; desc: st
 ];
 
 const TITLES: Record<ActiveTab, { crumb: string; title: string }> = {
-  home: { crumb: 'Overview', title: 'Platform Overview' },
-  docs: { crumb: 'Overview', title: 'Developer Documentation' },
+  home: { crumb: 'Public', title: 'Platform Overview' },
+  docs: { crumb: 'Public', title: 'Developer Documentation' },
   live: { crumb: 'Build', title: 'Live call' },
   studio: { crumb: 'Build', title: 'Agent Studio' },
   tools: { crumb: 'Build', title: 'Tools & Webhooks' },
@@ -57,7 +51,7 @@ const TITLES: Record<ActiveTab, { crumb: string; title: string }> = {
   results: { crumb: 'Measure', title: 'Results' },
 };
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, apiOnline }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onNavigateExternal, apiOnline }) => {
   return (
     <>
       <aside className="sidebar">
@@ -110,8 +104,32 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, apiOnlin
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
             <span style={{ fontWeight: 600 }}>{apiOnline ? 'API · :8443' : 'API unreachable'}</span>
           </div>
-          <div style={{ fontSize: 11, color: '#667085', marginTop: 8, padding: '0 2px' }}>
-            {apiOnline ? 'Serving live pipeline data.' : 'Start the gateway to load data.'}
+
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <button
+              onClick={() => onNavigateExternal?.('home')}
+              style={{
+                background: 'none', border: 'none', color: '#94a3b8', fontSize: 12,
+                cursor: 'pointer', textAlign: 'left', padding: '4px 6px', borderRadius: 4,
+                display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+            >
+              <span>🌐</span> Platform Home ↗
+            </button>
+            <button
+              onClick={() => onNavigateExternal?.('docs')}
+              style={{
+                background: 'none', border: 'none', color: '#94a3b8', fontSize: 12,
+                cursor: 'pointer', textAlign: 'left', padding: '4px 6px', borderRadius: 4,
+                display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+            >
+              <span>📖</span> Developer Docs ↗
+            </button>
           </div>
         </div>
       </aside>
@@ -119,18 +137,25 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, apiOnlin
   );
 };
 
-export const Topbar: React.FC<{ activeTab: ActiveTab; apiOnline: boolean; onHome: () => void; onSelectTab: (t: ActiveTab) => void }> = ({
+export const Topbar: React.FC<{
+  activeTab: ActiveTab;
+  apiOnline: boolean;
+  onHome: () => void;
+  onDocs: () => void;
+  onSelectTab: (t: ActiveTab) => void;
+}> = ({
   activeTab,
   apiOnline,
   onHome,
+  onDocs,
   onSelectTab,
 }) => {
-  const t = TITLES[activeTab];
-  const ids: ActiveTab[] = ['home', 'docs', 'live', 'studio', 'tools', 'telephony', 'calls', 'analytics', 'results', 'label', 'translate'];
+  const t = TITLES[activeTab] || { crumb: 'Console', title: 'Dashboard' };
+  const ids: ActiveTab[] = ['live', 'studio', 'tools', 'telephony', 'calls', 'analytics', 'results', 'label', 'translate'];
   const labels: Record<ActiveTab, string> = { home: 'Home', docs: 'Docs', live: 'Live', studio: 'Studio', tools: 'Tools', telephony: 'Telephony', calls: 'Calls', analytics: 'Analytics', results: 'Results', label: 'Label', translate: 'Translate' };
   return (
     <div className="topbar">
-      <button onClick={onHome} className="btn btn-sm" style={{ padding: '4px 10px' }}>
+      <button onClick={onHome} className="btn btn-sm" title="View Public Landing Page" style={{ padding: '4px 10px' }}>
         Voicebench
       </button>
       <span className="topbar-crumb">
@@ -145,6 +170,13 @@ export const Topbar: React.FC<{ activeTab: ActiveTab; apiOnline: boolean; onHome
         ))}
       </nav>
       <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button
+          onClick={onDocs}
+          className="btn btn-sm"
+          style={{ padding: '4px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          <span>📖</span> Docs
+        </button>
         {!apiOnline ? (
           <span className="badge badge-warning">API offline</span>
         ) : (
