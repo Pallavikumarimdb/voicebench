@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-11-24T00:07:23Z",
+  "git_sha": "9288c70",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "python_version": "3.13.8",
+  "cpu_count": 12,
+  "fixed_stub_latency_ms": 10.0,
+  "results": {
+    "concurrency_1": {
+      "concurrency": 1,
+      "samples": 100,
+      "direct_stub_p50_ms": 15.54,
+      "direct_stub_p95_ms": 16.46,
+      "gateway_p50_ms": 15.78,
+      "gateway_p95_ms": 31.16,
+      "gateway_p99_ms": 31.61,
+      "overhead_p50_ms": 0.24,
+      "overhead_p95_ms": 14.7,
+      "overhead_p99_ms": 15.15
+    },
+    "concurrency_8": {
+      "concurrency": 8,
+      "samples": 100,
+      "direct_stub_p50_ms": 15.38,
+      "direct_stub_p95_ms": 17.04,
+      "gateway_p50_ms": 29.24,
+      "gateway_p95_ms": 32.24,
+      "gateway_p99_ms": 33.75,
+      "overhead_p50_ms": 13.86,
+      "overhead_p95_ms": 15.2,
+      "overhead_p99_ms": 16.71
+    },
+    "concurrency_32": {
+      "concurrency": 32,
+      "samples": 100,
+      "direct_stub_p50_ms": 15.81,
+      "direct_stub_p95_ms": 27.02,
+      "gateway_p50_ms": 34.06,
+      "gateway_p95_ms": 40.63,
+      "gateway_p99_ms": 40.73,
+      "overhead_p50_ms": 18.25,
+      "overhead_p95_ms": 13.61,
+      "overhead_p99_ms": 13.71
+    }
+  }
+}
