@@ -28,6 +28,7 @@ IS_WINDOWS = sys.platform.startswith("win")
 
 # ANSI color codes
 COLORS = {
+    "LLM_GW": "\033[94m",    # Blue
     "AGENT": "\033[96m",     # Cyan
     "TTS": "\033[95m",       # Magenta
     "STT": "\033[93m",       # Yellow
@@ -164,6 +165,18 @@ def main():
     print(f"{COLORS['BOLD']}  Voice AI Infrastructure - Starting Pipeline in [{mode.upper()}] Mode{COLORS['RESET']}")
     print(f"{COLORS['BOLD']}============================================================{COLORS['RESET']}\n")
 
+    # 0. LLM Inference Gateway (port 8005)
+    if mode in ("agent", "all"):
+        if is_port_in_use(8005):
+            print(f"{COLORS['WARN']}⚠ Port 8005 is already active (keeping existing LLM Gateway).{COLORS['RESET']}")
+        else:
+            print("🚀 Starting LLM Gateway on http://localhost:8005 ...")
+            pm.start_service(
+                "LLM_GW",
+                [py_bin, "-m", "uvicorn", "services.llm_gateway.app.main:app", "--host", "0.0.0.0", "--port", "8005"] + reload_flag,
+                cwd=ROOT_DIR,
+            )
+
     # 1. Agent Service (port 8003)
     if mode in ("agent", "all"):
         if is_port_in_use(8003):
@@ -251,6 +264,7 @@ def main():
     print(f"  • Web Client UI:          http://localhost:5173")
     print(f"  • Gateway Server:         http://localhost:8443 / ws://localhost:8443/session")
     if mode in ("agent", "all"):
+        print(f"  • LLM Inference Gateway:  http://localhost:8005 (metrics: http://localhost:8005/metrics)")
         print(f"  • Agent Brain Service:    http://localhost:8003 (docs: http://localhost:8003/docs)")
     if mode in ("agent", "translator", "all"):
         print(f"  • TTS Streaming Service:  http://localhost:8004 (docs: http://localhost:8004/docs)")

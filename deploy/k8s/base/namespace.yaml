@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: voiceai
+  labels:
+    app.kubernetes.io/name: voice-ai-infra
+    app.kubernetes.io/part-of: voiceai

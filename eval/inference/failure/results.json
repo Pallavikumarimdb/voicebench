@@ -1,0 +1,347 @@
+{
+  "metadata": {
+    "timestamp": "2026-11-24T04:47:47Z",
+    "personas": [
+      "cooperative",
+      "hostile",
+      "evasive",
+      "hardship",
+      "already_paid",
+      "third_party",
+      "stop_contact",
+      "off_script",
+      "interrupting",
+      "fails_verification"
+    ],
+    "failure_modes": [
+      "timeout",
+      "5xx",
+      "slow_ttft",
+      "mid_stream_drop",
+      "all_down"
+    ],
+    "failure_rates": [
+      0.0,
+      0.1,
+      0.3,
+      1.0
+    ],
+    "runs_per_persona": 5
+  },
+  "conditions": {
+    "baseline_0pct": {
+      "mode": "none",
+      "rate": 0.0,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 12.0,
+      "turn_latency_p95_ms": 12.0,
+      "fallback_counts": {}
+    },
+    "timeout_10pct": {
+      "mode": "timeout",
+      "rate": 0.1,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 12.0,
+      "fallback_counts": {
+        "TTFT_BUDGET_EXCEEDED": 3,
+        "CIRCUIT_OPEN": 206
+      }
+    },
+    "timeout_30pct": {
+      "mode": "timeout",
+      "rate": 0.3,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "TTFT_BUDGET_EXCEEDED": 3,
+        "CIRCUIT_OPEN": 222
+      }
+    },
+    "timeout_100pct": {
+      "mode": "timeout",
+      "rate": 1.0,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "TTFT_BUDGET_EXCEEDED": 3,
+        "CIRCUIT_OPEN": 227
+      }
+    },
+    "5xx_10pct": {
+      "mode": "5xx",
+      "rate": 0.1,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 12.0,
+      "fallback_counts": {
+        "BACKEND_ERROR": 3,
+        "CIRCUIT_OPEN": 217
+      }
+    },
+    "5xx_30pct": {
+      "mode": "5xx",
+      "rate": 0.3,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "BACKEND_ERROR": 3,
+        "CIRCUIT_OPEN": 225
+      }
+    },
+    "5xx_100pct": {
+      "mode": "5xx",
+      "rate": 1.0,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "BACKEND_ERROR": 3,
+        "CIRCUIT_OPEN": 227
+      }
+    },
+    "slow_ttft_10pct": {
+      "mode": "slow_ttft",
+      "rate": 0.1,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 12.0,
+      "fallback_counts": {
+        "TTFT_BUDGET_EXCEEDED": 3,
+        "CIRCUIT_OPEN": 204
+      }
+    },
+    "slow_ttft_30pct": {
+      "mode": "slow_ttft",
+      "rate": 0.3,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "TTFT_BUDGET_EXCEEDED": 3,
+        "CIRCUIT_OPEN": 220
+      }
+    },
+    "slow_ttft_100pct": {
+      "mode": "slow_ttft",
+      "rate": 1.0,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "TTFT_BUDGET_EXCEEDED": 3,
+        "CIRCUIT_OPEN": 227
+      }
+    },
+    "mid_stream_drop_10pct": {
+      "mode": "mid_stream_drop",
+      "rate": 0.1,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 12.0,
+      "fallback_counts": {
+        "BACKEND_ERROR": 3,
+        "CIRCUIT_OPEN": 208
+      }
+    },
+    "mid_stream_drop_30pct": {
+      "mode": "mid_stream_drop",
+      "rate": 0.3,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "BACKEND_ERROR": 3,
+        "CIRCUIT_OPEN": 226
+      }
+    },
+    "mid_stream_drop_100pct": {
+      "mode": "mid_stream_drop",
+      "rate": 1.0,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 0,
+      "safe_mode_rate_pct": 0.0,
+      "turn_latency_p50_ms": 8.0,
+      "turn_latency_p95_ms": 8.0,
+      "fallback_counts": {
+        "BACKEND_ERROR": 3,
+        "CIRCUIT_OPEN": 227
+      }
+    },
+    "all_down_10pct": {
+      "mode": "all_down",
+      "rate": 0.1,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 21,
+      "safe_mode_rate_pct": 9.13,
+      "turn_latency_p50_ms": 12.0,
+      "turn_latency_p95_ms": 15.0,
+      "fallback_counts": {
+        "ALL_BACKENDS_FAILED": 42
+      }
+    },
+    "all_down_30pct": {
+      "mode": "all_down",
+      "rate": 0.3,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 76,
+      "safe_mode_rate_pct": 33.04,
+      "turn_latency_p50_ms": 12.0,
+      "turn_latency_p95_ms": 15.01,
+      "fallback_counts": {
+        "ALL_BACKENDS_FAILED": 152
+      }
+    },
+    "all_down_100pct": {
+      "mode": "all_down",
+      "rate": 1.0,
+      "total_calls": 50,
+      "total_turns": 230,
+      "hard_fail_calls": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci_95": [
+        0.0,
+        7.13
+      ],
+      "safe_mode_turns": 230,
+      "safe_mode_rate_pct": 100.0,
+      "turn_latency_p50_ms": 15.01,
+      "turn_latency_p95_ms": 15.02,
+      "fallback_counts": {
+        "ALL_BACKENDS_FAILED": 460
+      }
+    }
+  }
+}

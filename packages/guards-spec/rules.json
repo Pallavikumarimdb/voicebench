@@ -1,0 +1,55 @@
+{
+  "calling_hours": {
+    "start": "08:00",
+    "end": "21:00",
+    "timezone": "Asia/Tokyo"
+  },
+  "negotiation": {
+    "max_discount_pct": 0,
+    "min_down_payment_pct": 10,
+    "max_installments": 12,
+    "max_duration_days": 180
+  },
+  "forbidden_patterns": [
+    {
+      "pattern": "(警察|逮捕|訴訟|差し押さえ|強制執行|裁判沙汰)",
+      "rule_code": "threats_legal_force",
+      "flags": "i"
+    },
+    {
+      "pattern": "(会社|職場|家族|親族|近所|周囲).*(連絡|知らせ|バラす|払わせ|請求)",
+      "rule_code": "shaming_third_party_threat",
+      "flags": "i"
+    },
+    {
+      "pattern": "(恥ずかしくない|無責任|常識がない|逃げるのか|いい加減にしろ)",
+      "rule_code": "shaming_insult",
+      "flags": "i"
+    },
+    {
+      "pattern": "(今すぐ払え|今日中じゃないと許さない|猶予は一切ない)",
+      "rule_code": "false_urgency",
+      "flags": "i"
+    },
+    {
+      "pattern": "(police|arrest|jail|prosecut|foreclose|garnish|lawsuit|sheriff|sue you)",
+      "rule_code": "threats_legal_force",
+      "flags": "i"
+    },
+    {
+      "pattern": "(employer|workplace|boss|coworker|family|neighbor|relative).*(contact|tell|call|notify|expose|shame)|(contact|tell|call|notify|expose|shame).*(employer|workplace|boss|coworker|family|neighbor|relative)",
+      "rule_code": "shaming_third_party_threat",
+      "flags": "i"
+    },
+    {
+      "pattern": "(shameless|irresponsible|deadbeat|liar|scammer|pathetic|loser)",
+      "rule_code": "shaming_insult",
+      "flags": "i"
+    },
+    {
+      "pattern": "(pay right now or else|immediate arrest|zero tolerance|today or we send)",
+      "rule_code": "false_urgency",
+      "flags": "i"
+    }
+  ]
+}

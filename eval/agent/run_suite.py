@@ -13,7 +13,7 @@ import sys
 import json
 import argparse
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 
 # Ensure repo root and agent are on path
 repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,6 +30,29 @@ from eval.agent.simulator import ConversationSimulator
 from eval.agent.checks.hard_fail import hard_fail_evaluator
 from eval.agent.judge.judge import call_judge
 from services.agent.app.llm import global_tracker
+
+import math
+import numpy as np
+
+def wilson_score_ci(k: int, n: int) -> Tuple[float, float]:
+    """Calculates Wilson score 95% interval for binomial proportion."""
+    if n == 0:
+        return (0.0, 0.0)
+    z = 1.95996
+    p = k / n
+    denom = 1.0 + z**2 / n
+    center = (p + z**2 / (2 * n)) / denom
+    margin = (z * math.sqrt(p * (1.0 - p) / n + z**2 / (4 * n**2))) / denom
+    return (round(max(0.0, center - margin) * 100, 2), round(min(1.0, center + margin) * 100, 2))
+
+def bootstrap_mean_ci(data: List[float], n_boot: int = 1000) -> Tuple[float, float]:
+    """Calculates bootstrap 95% confidence interval for the mean."""
+    if not data:
+        return (0.0, 0.0)
+    arr = np.array(data)
+    rng = np.random.default_rng(42)
+    means = [np.mean(rng.choice(arr, size=len(arr), replace=True)) for _ in range(n_boot)]
+    return (round(float(np.percentile(means, 2.5)), 2), round(float(np.percentile(means, 97.5)), 2))
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
 ALL_PERSONAS = [
@@ -129,27 +152,67 @@ def run_suite():
             }
             runs_data.append(run_entry)
 
-    # Calculate statistics
-    hard_fail_rate_final = (1.0 - (passed_hard_fail_calls / total_calls)) if total_calls else 0.0
+    # Calculate statistics with confidence intervals
+    failed_calls = total_calls - passed_hard_fail_calls
+    hard_fail_rate_final = (failed_calls / total_calls) if total_calls else 0.0
+    hf_wilson_ci = wilson_score_ci(failed_calls, total_calls)
+
     ptp_rate = (ptp_secured_count / total_calls) if total_calls else 0.0
+    ptp_wilson_ci = wilson_score_ci(ptp_secured_count, total_calls)
+
     avg_judge_score = (sum(judge_mean_scores) / len(judge_mean_scores)) if judge_mean_scores else 0.0
+    judge_bootstrap_ci = bootstrap_mean_ci(judge_mean_scores)
 
     all_latencies.sort()
     p50_lat = all_latencies[len(all_latencies) // 2] if all_latencies else 0.0
     p95_idx = int(len(all_latencies) * 0.95)
     p95_lat = all_latencies[p95_idx] if all_latencies else 0.0
+    latency_bootstrap_ci = bootstrap_mean_ci(all_latencies)
+
+    # Per-rule breach table & classification
+    breach_table_final = {}
+    breach_table_attempted = {}
+    guard_preventable_failures = 0
+    scenario_inherent_failures = 0
+
+    for r in runs_data:
+        v_finals = r["hard_fail"].get("final_violations", [])
+        v_attempts = r["hard_fail"].get("attempted_violations", [])
+        for v in v_finals:
+            breach_table_final[v] = breach_table_final.get(v, 0) + 1
+        for v in v_attempts:
+            breach_table_attempted[v] = breach_table_attempted.get(v, 0) + 1
+
+        if not r["hard_fail"]["passed"]:
+            # Classify: leaks and forbidden content are guard-preventable
+            if any(v in ["amount_disclosed_before_verification", "forbidden_threats", "forbidden_shaming_insult",
+                         "forbidden_shaming_third_party", "forbidden_false_urgency", "offer_exceeds_approved_installments"]
+                   for v in v_finals):
+                guard_preventable_failures += 1
+            else:
+                scenario_inherent_failures += 1
 
     summary = {
         "variant": args.variant,
         "total_calls": total_calls,
         "hard_fail_passed_calls": passed_hard_fail_calls,
         "hard_fail_rate_final": round(hard_fail_rate_final * 100, 2),
+        "hard_fail_wilson_ci_95": hf_wilson_ci,
         "total_attempted_violations": attempted_violations_count,
         "total_final_violations": final_violations_count,
+        "breaches_by_rule_final": breach_table_final,
+        "breaches_by_rule_attempted": breach_table_attempted,
+        "failure_classification": {
+            "guard_preventable": guard_preventable_failures,
+            "scenario_inherent": scenario_inherent_failures
+        },
         "promise_to_pay_rate": round(ptp_rate * 100, 2),
+        "promise_to_pay_wilson_ci_95": ptp_wilson_ci,
         "average_judge_score": round(avg_judge_score, 2),
+        "judge_score_bootstrap_ci_95": judge_bootstrap_ci,
         "latency_p50_ms": round(p50_lat, 2),
         "latency_p95_ms": round(p95_lat, 2),
+        "latency_mean_bootstrap_ci_95": latency_bootstrap_ci,
         "estimated_cost_usd": round(global_tracker.estimated_cost_usd, 4),
         "total_llm_calls": global_tracker.total_calls
     }

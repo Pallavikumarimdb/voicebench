@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from './primitives.tsx';
 
-export type ActiveTab = 'live' | 'studio' | 'tools' | 'telephony' | 'calls' | 'results' | 'label' | 'translate' | 'analytics';
+export type ActiveTab = 'home' | 'docs' | 'live' | 'studio' | 'tools' | 'telephony' | 'calls' | 'results' | 'label' | 'translate' | 'analytics';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -37,6 +37,8 @@ const GROUPS: { section: string; items: { id: ActiveTab; label: string; desc: st
 ];
 
 const TITLES: Record<ActiveTab, { crumb: string; title: string }> = {
+  home: { crumb: 'Public', title: 'Platform Overview' },
+  docs: { crumb: 'Public', title: 'Developer Documentation' },
   live: { crumb: 'Build', title: 'Live call' },
   studio: { crumb: 'Build', title: 'Agent Studio' },
   tools: { crumb: 'Build', title: 'Tools & Webhooks' },
@@ -101,27 +103,33 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, apiOnlin
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
             <span style={{ fontWeight: 600 }}>{apiOnline ? 'API · :8443' : 'API unreachable'}</span>
           </div>
-          <div style={{ fontSize: 11, color: '#667085', marginTop: 8, padding: '0 2px' }}>
-            {apiOnline ? 'Serving live pipeline data.' : 'Start the gateway to load data.'}
-          </div>
+
+  
         </div>
       </aside>
     </>
   );
 };
 
-export const Topbar: React.FC<{ activeTab: ActiveTab; apiOnline: boolean; onHome: () => void; onSelectTab: (t: ActiveTab) => void }> = ({
+export const Topbar: React.FC<{
+  activeTab: ActiveTab;
+  apiOnline: boolean;
+  onHome: () => void;
+  onDocs: () => void;
+  onSelectTab: (t: ActiveTab) => void;
+}> = ({
   activeTab,
   apiOnline,
   onHome,
+  onDocs,
   onSelectTab,
 }) => {
-  const t = TITLES[activeTab];
+  const t = TITLES[activeTab] || { crumb: 'Console', title: 'Dashboard' };
   const ids: ActiveTab[] = ['live', 'studio', 'tools', 'telephony', 'calls', 'analytics', 'results', 'label', 'translate'];
-  const labels: Record<ActiveTab, string> = { live: 'Live', studio: 'Studio', tools: 'Tools', telephony: 'Telephony', calls: 'Calls', analytics: 'Analytics', results: 'Results', label: 'Label', translate: 'Translate' };
+  const labels: Record<ActiveTab, string> = { home: 'Home', docs: 'Docs', live: 'Live', studio: 'Studio', tools: 'Tools', telephony: 'Telephony', calls: 'Calls', analytics: 'Analytics', results: 'Results', label: 'Label', translate: 'Translate' };
   return (
     <div className="topbar">
-      <button onClick={onHome} className="btn btn-sm" style={{ padding: '4px 10px' }}>
+      <button onClick={onHome} className="btn btn-sm" title="View Public Landing Page" style={{ padding: '4px 10px' }}>
         Voicebench
       </button>
       <span className="topbar-crumb">
@@ -136,6 +144,13 @@ export const Topbar: React.FC<{ activeTab: ActiveTab; apiOnline: boolean; onHome
         ))}
       </nav>
       <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button
+          onClick={onDocs}
+          className="btn btn-sm"
+          style={{ padding: '4px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          <span>📖</span> Docs
+        </button>
         {!apiOnline ? (
           <span className="badge badge-warning">API offline</span>
         ) : (

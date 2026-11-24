@@ -19,7 +19,7 @@ from prometheus_client import Histogram, Counter, generate_latest, CONTENT_TYPE_
 
 from .protocol import (
     BrainRequest, BrainResponse, BrainEvent, BrainMetrics,
-    SessionStartRequest, SessionEndRequest
+    SessionStartRequest, SessionEndRequest, TurnCancelRequest
 )
 from .graph import CollectionsGraphAgent
 from .baseline import BaselineCollectionsAgent
@@ -29,6 +29,8 @@ from .state import CallState
 from .compliance.guard import ComplianceGuard
 from .generalized import GeneralizedVoiceAgent
 from .llm import llm_client
+from .risk import derive_risk_tier
+from .safe_mode import get_safe_mode_response
 from .tool_registry import tool_registry, ToolDefinition, ToolParameter
 from .agent_studio import studio_manager
 
@@ -217,22 +219,67 @@ async def turn(req: BrainRequest) -> BrainResponse:
     domain = cfg.get("domain", "collections")
     language = cfg.get("language", "ja")
 
-    with AGENT_TURN_LATENCY.labels(stage="turn_total").time():
-        if domain in ["screening", "kyc", "custom"] or (domain == "collections" and language == "en"):
-            turn_result = generalized_agent.process_turn(
-                req.sessionId, req.text, state, config=cfg, audit_logger=audit_logger
-            )
-        else:
-            # Select engine for Japanese collections
-            if variant == "v1_baseline":
-                agent = baseline_agent
-            elif variant == "v2_graph_no_slow_path":
-                agent = graph_agent_fast_only
-            else:
-                agent = graph_agent
+    # Plan 1 P2-T2: Derive risk_tier deterministically from graph state
+    risk_tier = derive_risk_tier(state, domain)
+    state["risk_tier"] = risk_tier
+    cfg["risk_tier"] = risk_tier
 
-            turn_result = agent.process_turn(req.sessionId, req.text, state, audit_logger)
-        
+    # Plan 1 P4-T2: Tier 0 Fast Path (deterministic canonical matching, < 5 ms, bypassing LLM)
+    from .fast_path import match_fast_path
+    fast_match = match_fast_path(req.text, state, domain=domain, language=language)
+
+    with AGENT_TURN_LATENCY.labels(stage="turn_total").time():
+        if fast_match:
+            state["phase"] = fast_match.next_state
+            state["messages"].append({"role": "user", "content": req.text})
+            state["messages"].append({"role": "assistant", "content": fast_match.text})
+            post_block = guard.check_post_llm(fast_match.text, state)
+            clean_text = post_block[1] if post_block else fast_match.text
+            turn_result = fast_match.to_turn_result()
+            turn_result["text"] = clean_text
+        else:
+            try:
+                if domain in ["screening", "kyc", "custom"] or (domain == "collections" and language == "en"):
+                    turn_result = generalized_agent.process_turn(
+                        req.sessionId, req.text, state, config=cfg, audit_logger=audit_logger
+                    )
+                else:
+                    # Select engine for Japanese collections
+                    if variant == "v1_baseline":
+                        agent = baseline_agent
+                    elif variant == "v2_graph_no_slow_path":
+                        agent = graph_agent_fast_only
+                    else:
+                        agent = graph_agent
+
+                    turn_result = agent.process_turn(req.sessionId, req.text, state, audit_logger)
+            except Exception as ex:
+                # Plan 1 P2-T4: Catch total outages and initiate safe-mode (T3)
+                safe_text, reason_code = get_safe_mode_response(domain, language)
+                post_block = guard.check_post_llm(safe_text, state)
+                if post_block:
+                    _, safe_text = post_block
+                turn_result = {
+                    "text": safe_text,
+                    "events": [{"type": "escalate", "payload": {"action": "human_handoff", "reason": "ALL_BACKENDS_FAILED", "error": str(ex)}}],
+                    "metrics": {"llmMs": 0.0, "ttftMs": 0.0, "tokensIn": len(req.text), "tokensOut": len(safe_text), "model": "t3_safe_mode"},
+                    "x_voiceai": {"tier": "t3_safe_mode", "reason_code": "ALL_BACKENDS_FAILED"}
+                }
+
+        # Check if returned result specifically triggered safe mode (t3_safe_mode)
+        x_voiceai = turn_result.get("x_voiceai") or {}
+        if x_voiceai.get("tier") == "t3_safe_mode" or x_voiceai.get("reason_code") == "ALL_BACKENDS_FAILED":
+            safe_text, reason_code = get_safe_mode_response(domain, language)
+            post_block = guard.check_post_llm(safe_text, state)
+            if post_block:
+                _, safe_text = post_block
+            turn_result["text"] = safe_text
+            turn_result.setdefault("events", []).append({
+                "type": "escalate",
+                "payload": {"action": "human_handoff", "reason": "ALL_BACKENDS_FAILED", "domain": domain}
+            })
+            turn_result["x_voiceai"] = {"tier": "t3_safe_mode", "reason_code": "ALL_BACKENDS_FAILED"}
+
         reply_text = turn_result["text"]
         raw_events = turn_result.get("events", [])
         raw_metrics = turn_result.get("metrics", {})
@@ -253,11 +300,64 @@ async def turn(req: BrainRequest) -> BrainResponse:
             model=raw_metrics.get("model", variant)
         )
 
+        # Audit Record Schema v2 with routing decision record and post-guard proof (Plan 1 P1-T4 & P2-T6)
+        route_decision = turn_result.get("x_voiceai") or {"tier": "t0_fast_path"}
+        audit_logger.append_turn(
+            turn_index=state.get("turn_count", req.uttId),
+            caller_text=req.text,
+            agent_attempted_text=turn_result.get("attempted_text", reply_text),
+            agent_final_text=reply_text,
+            guard_events=turn_result.get("guard_events", []),
+            post_guard_applied=True,
+            route=route_decision,
+            timings={
+                "vad_end_to_first_audio_ms": 0,
+                "stages": {
+                    "vad_hangover": 0, "asr": 0, "pre_guard": 0,
+                    "llm_ttft": int(brain_metrics.ttftMs or 0),
+                    "llm_total": int(brain_metrics.llmMs or 0),
+                    "post_guard": 0, "tts_first_audio": 0, "transport": 0
+                }
+            }
+        )
+
         return BrainResponse(
             text=reply_text,
             events=brain_events,
-            metrics=brain_metrics
+            metrics=brain_metrics,
+            x_voiceai=turn_result.get("x_voiceai")
         )
+
+@app.post("/turn/cancel")
+async def cancel_turn(req: TurnCancelRequest):
+    """
+    Cancels in-flight turn processing for the given session and propagates
+    cancellation to the upstream LLM Gateway if configured.
+    """
+    session_id = req.sessionId
+    cancelled = False
+
+    # Propagate cancellation to upstream LLM Gateway
+    llm_gateway_url = os.environ.get("LLM_GATEWAY_URL")
+    if llm_gateway_url:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=1.0) as client:
+                res = await client.post(
+                    f"{llm_gateway_url.rstrip('/')}/v1/cancel",
+                    json={"session_id": session_id, "turn_id": str(req.uttId or "")}
+                )
+                if res.status_code == 200:
+                    cancelled = True
+        except Exception:
+            pass
+
+    return {
+        "status": "cancelled",
+        "sessionId": session_id,
+        "uttId": req.uttId,
+        "upstream_cancelled": cancelled
+    }
 
 # Tool & Webhook Endpoints
 @app.get("/tools")

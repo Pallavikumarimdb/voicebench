@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { WordTs, Utterance } from '@voice/protocol';
+import type { WordTs, Utterance } from '@voice/protocol';
 
 export interface Session {
   id: string;
@@ -19,10 +19,13 @@ export interface Session {
   agentSpeakingStartedAt?: number;
   currentSpeakingUttId?: number;
   currentTTSAbort?: AbortController;
+  currentAgentAbort?: AbortController;
   config?: Record<string, any>;
   /** Last agent utterance text + when its playback ended (echo suppression). */
   lastAgentText?: string;
   lastAgentSpeechEndAt?: number;
+  lastCallerSpeechEndAt?: number;
+  lastAgentSpeechStartAt?: number;
   /** Highest STT uttId seen (survives STT reconnects so numbering continues). */
   lastSttUttId?: number;
   /** Dual-channel audio recorder for call inspector playback and download. */

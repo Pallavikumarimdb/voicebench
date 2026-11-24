@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 400" width="750" height="400">
+  <style>
+    .title { font-family: -apple-system, sans-serif; font-size: 18px; font-weight: bold; fill: #2C3E50; }
+    .subtitle { font-family: -apple-system, sans-serif; font-size: 12px; fill: #7F8C8D; }
+    .label { font-family: -apple-system, sans-serif; font-size: 12px; font-weight: 500; fill: #34495E; text-anchor: end; }
+    .val { font-family: -apple-system, sans-serif; font-size: 11px; font-weight: bold; fill: #2C3E50; }
+  </style>
+  <rect width="750" height="400" fill="#FFFFFF" rx="8" />
+  <text x="30" y="38" class="title">LLM Concurrency Scaling & Pod Capacity (B4)</text>
+  <text x="30" y="58" class="subtitle">Prefix-cached Qwen2.5-7B on CPU. Recommended capacity target: 4 concurrent sessions/pod.</text>
+  <text x="205" y="115" class="label">Concurrency  1</text>
+  <rect x="220" y="100" width="39" height="24" rx="4" fill="#27AE60" />
+  <text x="269" y="117" class="val">p50: 28.8ms | p95: 31.32ms (OPTIMAL)</text>
+  <text x="205" y="175" class="label">Concurrency  4</text>
+  <rect x="220" y="160" width="72" height="24" rx="4" fill="#27AE60" />
+  <text x="302" y="177" class="val">p50: 52.78ms | p95: 57.63ms (OPTIMAL)</text>
+  <text x="205" y="235" class="label">Concurrency  8</text>
+  <rect x="220" y="220" width="134" height="24" rx="4" fill="#F39C12" />
+  <text x="364" y="237" class="val">p50: 103.16ms | p95: 107.28ms (DEGRADED)</text>
+  <text x="205" y="295" class="label">Concurrency 16</text>
+  <rect x="220" y="280" width="263" height="24" rx="4" fill="#E74C3C" />
+  <text x="493" y="297" class="val">p50: 206.28ms | p95: 209.65ms (SLA BREACH)</text>
+  <line x1="471" y1="80" x2="471" y2="340" stroke="#E74C3C" stroke-width="2" stroke-dasharray="4,4" />
+  <text x="471" y="360" text-anchor="middle" style="font-family: sans-serif; font-size: 11px; font-weight: bold; fill: #E74C3C;">200 ms TTFT Budget Ceiling</text>
+</svg>

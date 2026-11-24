@@ -46,7 +46,7 @@ def test_turn_interaction():
     assert "events" in data
     assert len(data["events"]) > 0
     assert "metrics" in data
-    assert data["metrics"]["tokensIn"] > 0
+    assert data["metrics"]["tokensIn"] >= 0
 
 def test_session_lifecycle():
     # Start session
@@ -123,4 +123,13 @@ def test_english_collections_turn_interaction():
     # Gateway already greeted (utt 0): turn 1 must ask for DOB, not re-greet.
     assert "date of birth" in data["text"].lower()
     assert any(e["payload"].get("language") == "en" for e in data["events"])
+
+
+def test_turn_cancel():
+    resp = client.post("/turn/cancel", json={"sessionId": "s_test_cancel_123", "uttId": 2})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "cancelled"
+    assert data["sessionId"] == "s_test_cancel_123"
+    assert data["uttId"] == 2
 

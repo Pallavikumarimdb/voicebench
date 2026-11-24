@@ -24,12 +24,45 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
     ruleBlocked?: string;
     toolCalls: Array<{ tool: string; args: any; result: any }>;
     latencyMs?: number;
+    route?: {
+      tier?: string;
+      backend?: string;
+      model?: string;
+      reason_code?: string;
+      rule_id?: string;
+      policy_version?: number;
+      cache?: string;
+      constraint?: string;
+      fallback_chain?: string[];
+    };
+    timings?: {
+      vad_end_to_first_audio_ms?: number;
+      stages?: Record<string, number>;
+    };
   }> = [];
 
   let currentTurnNumber = 1;
   let activeTurn: (typeof turns)[0] = { turnNumber: currentTurnNumber, toolCalls: [] };
 
-  for (const record of auditRecords) {
+  for (const r of auditRecords) {
+    const record = r as any;
+    if (record.schema_version === 2) {
+      // Direct Schema v2 turn record
+      turns.push({
+        turnNumber: record.turn_index || currentTurnNumber++,
+        userText: record.caller_text,
+        agentAttempted: record.agent_attempted_text,
+        agentFinal: record.agent_final_text,
+        phase: record.dialogue_state || 'dialogue',
+        ruleBlocked: record.guard_events?.length > 0 ? record.guard_events[0].code : undefined,
+        toolCalls: [],
+        latencyMs: record.timings?.vad_end_to_first_audio_ms,
+        route: record.route,
+        timings: record.timings
+      });
+      continue;
+    }
+
     if (record.stage === 'user_utterance') {
       const turnNum = record.payload?.turn || currentTurnNumber;
       if (activeTurn.userText || activeTurn.agentFinal) {
@@ -172,6 +205,8 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
                     <span className="mono" style={{ fontWeight: 700, fontSize: 12 }}>T{turn.turnNumber}</span>
                   </button>
                   {turn.phase && <Badge tone="neutral">{turn.phase}</Badge>}
+                  {turn.route?.tier && <Badge tone="info">{turn.route.tier}</Badge>}
+                  {turn.route?.cache === 'hit' && <Badge tone="success">⚡ Cache Hit</Badge>}
                   {hasBlock && <ComplianceBadge blocked rule={turn.ruleBlocked} />}
                   {turn.latencyMs !== undefined && (
                     <span className="mono" style={{ marginLeft: 'auto', fontSize: 12, color: turn.latencyMs > 500 ? 'var(--danger)' : 'var(--text-tertiary)' }}>
@@ -179,6 +214,20 @@ export const CallInspector: React.FC<CallInspectorProps> = ({ call, onBack }) =>
                     </span>
                   )}
                 </div>
+
+                {turn.route && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8, padding: '4px 8px', borderRadius: 4, background: 'var(--bg-subtle)', fontSize: 11 }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Model: <strong>{turn.route.model || 'unknown'}</strong></span>
+                    {turn.route.backend && <span style={{ color: 'var(--text-secondary)' }}>Backend: <strong>{turn.route.backend}</strong></span>}
+                    {turn.route.rule_id && <span style={{ color: 'var(--text-secondary)' }}>Rule: <strong>{turn.route.rule_id}</strong></span>}
+                    {turn.route.reason_code && <span style={{ color: 'var(--text-secondary)' }}>Reason: <strong>{turn.route.reason_code}</strong></span>}
+                    {turn.timings?.stages && (
+                      <span style={{ color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+                        TTFT: {turn.timings.stages.llm_ttft || 0}ms · ASR: {turn.timings.stages.asr || 0}ms
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {turn.userText !== undefined && (
                   <div style={{ marginBottom: turn.agentFinal || turn.agentAttempted ? 10 : 0 }}>

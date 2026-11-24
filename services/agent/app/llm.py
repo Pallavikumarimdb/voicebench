@@ -69,6 +69,7 @@ class LLMClient:
 
         self.local_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         self.local_model = os.getenv("AGENT_LOCAL_MODEL", "qwen3:1.7b")
+        self.gateway_url = os.getenv("LLM_GATEWAY_URL")
         self._local_client = None
         self._probe_cache: Dict[str, Any] = {}
 
@@ -118,6 +119,96 @@ class LLMClient:
         self._probe_cache[provider] = (now, ok)
         return ok
 
+    def call_gateway(
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        temperature: float = 0.2,
+        max_tokens: int = 100,
+        session_id: Optional[str] = None,
+        turn_id: Optional[str] = None,
+        profile: Optional[str] = None,
+        dialogue_state: Optional[str] = None,
+        risk_tier: Optional[str] = None,
+        asr_confidence: Optional[float] = None,
+        json_schema: Optional[Dict[str, Any]] = None,
+        timeout_s: float = 10.0
+    ) -> Dict[str, Any]:
+        """
+        Calls the LLM Gateway with Plan 1 Section 5.2 metadata headers.
+        Returns response content along with the x_voiceai decision record.
+        """
+        if not self.gateway_url:
+            raise RuntimeError("LLM_GATEWAY_URL is not configured.")
+
+        url = f"{self.gateway_url.rstrip('/')}/v1/chat/completions"
+        target_model = model or self.local_model
+
+        headers = {
+            "Content-Type": "application/json",
+            "x-voiceai-session-id": session_id or "sess_default",
+            "x-voiceai-turn-id": str(turn_id or "0"),
+            "x-voiceai-profile": profile or "default",
+            "x-voiceai-dialogue-state": dialogue_state or "unknown",
+            "x-voiceai-risk-tier": risk_tier or "low",
+        }
+        if asr_confidence is not None:
+            headers["x-voiceai-asr-confidence"] = str(asr_confidence)
+        if messages:
+            headers["x-voiceai-utterance-tokens"] = str(len(messages[-1].get("content", "")))
+
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": False
+        }
+        if json_schema:
+            payload["json_schema"] = json_schema
+
+        t_start = time.perf_counter()
+        import urllib.request
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            raise RuntimeError(f"LLM Gateway call failed: {e}")
+
+        t_elapsed = (time.perf_counter() - t_start) * 1000
+        choice = data.get("choices", [{}])[0]
+        text = (choice.get("message", {}).get("content", "")).strip()
+        usage = data.get("usage", {})
+        tokens_in = usage.get("prompt_tokens", 0)
+        tokens_out = usage.get("completion_tokens", len(text))
+        x_voiceai = data.get("x_voiceai", {"tier": "t1_local"})
+
+        # Plan 1 P3-T2: parse brain_turn_v1 structure if available
+        brain_turn = None
+        try:
+            from .protocol import BrainTurnV1
+            brain_turn = BrainTurnV1.model_validate_json(text)
+        except Exception:
+            brain_turn = None
+
+        self.tracker.record(tokens_in, tokens_out, f"gateway:{target_model}")
+        return {
+            "text": text,
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            "model": f"gateway:{target_model}",
+            "latency_ms": round(t_elapsed, 2),
+            "cached": False,
+            "x_voiceai": x_voiceai,
+            "brain_turn": brain_turn
+        }
+
     def complete_with(
         self,
         provider: str,
@@ -126,11 +217,32 @@ class LLMClient:
         temperature: float = 0.2,
         max_tokens: int = 100,
         timeout_s: float = 8.0,
+        session_id: Optional[str] = None,
+        turn_id: Optional[str] = None,
+        risk_tier: Optional[str] = None,
+        dialogue_state: Optional[str] = None,
+        json_schema: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Routed completion with measured latency and real token counts.
-        Raises RuntimeError when the provider is unavailable (caller falls back).
+        Routes to LLM Gateway when LLM_GATEWAY_URL is configured; legacy path otherwise.
         """
+        if self.gateway_url:
+            kwargs = {
+                "messages": messages,
+                "model": model,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "session_id": session_id,
+                "turn_id": turn_id,
+                "risk_tier": risk_tier,
+                "dialogue_state": dialogue_state,
+                "timeout_s": timeout_s
+            }
+            if json_schema is not None:
+                kwargs["json_schema"] = json_schema
+            return self.call_gateway(**kwargs)
+
         t_start = time.perf_counter()
         if provider == "openai":
             if self._client is None:
@@ -166,6 +278,7 @@ class LLMClient:
             "model": f"{provider}:{target_model}",
             "latency_ms": round(t_elapsed, 2),
             "cached": False,
+            "x_voiceai": {"tier": "t0_fast_path", "reason_code": "DEFAULT"}
         }
 
     def complete(
@@ -224,7 +337,8 @@ class LLMClient:
             "tokens_out": tokens_out,
             "model": target_model,
             "latency_ms": round(t_elapsed, 2),
-            "cached": False
+            "cached": False,
+            "x_voiceai": {"tier": "t0_fast_path", "reason_code": "DEFAULT"}
         }
 
         if self.use_cache:

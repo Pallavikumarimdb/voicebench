@@ -176,6 +176,12 @@ export class SessionManager {
     const nowMs = Date.now();
     if (this.activeSources.length === 0) {
       this.agentSpeechStartedAt = nowMs;
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'playback_start',
+          tPlaybackStart: nowMs
+        }));
+      }
     }
     this.lastAgentChunkAt = nowMs;
     try {

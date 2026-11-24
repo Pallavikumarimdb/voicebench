@@ -1,0 +1,244 @@
+{
+  "simulation": true,
+  "label": "SIMULATION - 24H Contact Center Diurnal Load Curve",
+  "workload_profile": "Contact Center 24-Hour Voice Stream",
+  "parameters": {
+    "target_sessions_per_pod": 4.0,
+    "min_replicas": 2,
+    "max_replicas": 20,
+    "termination_grace_period_s": 900,
+    "scale_up_behavior": "Immediate (stabilizationWindow: 0s, max 100% / +4 pods)",
+    "scale_down_behavior": "Stabilization window 300s, max 10% step, preStop graceful drain",
+    "latency_guard_threshold_ms": 1000
+  },
+  "summary": {
+    "total_calls_handled_approx": 8092,
+    "total_calls_dropped": 0,
+    "dropped_call_rate_pct": 0.0,
+    "scale_up_events": 35,
+    "scale_down_events": 48,
+    "peak_concurrent_calls": 72,
+    "peak_replicas_allocated": 19,
+    "min_replicas_allocated": 2,
+    "max_ttfa_p95_ms": 1626.7,
+    "avg_ttfa_p95_ms": 667.2
+  },
+  "hourly_timeline": [
+    {
+      "hour": 0,
+      "time": "00:00",
+      "active_calls": 6,
+      "replicas": 2,
+      "load_per_pod": 3.0,
+      "ttfa_p95_ms": 570.0,
+      "action": "steady"
+    },
+    {
+      "hour": 1,
+      "time": "01:00",
+      "active_calls": 5,
+      "replicas": 2,
+      "load_per_pod": 2.5,
+      "ttfa_p95_ms": 555.0,
+      "action": "steady"
+    },
+    {
+      "hour": 2,
+      "time": "02:00",
+      "active_calls": 4,
+      "replicas": 2,
+      "load_per_pod": 2.0,
+      "ttfa_p95_ms": 540.0,
+      "action": "steady"
+    },
+    {
+      "hour": 3,
+      "time": "03:00",
+      "active_calls": 4,
+      "replicas": 2,
+      "load_per_pod": 2.0,
+      "ttfa_p95_ms": 540.0,
+      "action": "steady"
+    },
+    {
+      "hour": 4,
+      "time": "04:00",
+      "active_calls": 6,
+      "replicas": 2,
+      "load_per_pod": 3.0,
+      "ttfa_p95_ms": 570.0,
+      "action": "steady"
+    },
+    {
+      "hour": 5,
+      "time": "05:00",
+      "active_calls": 11,
+      "replicas": 3,
+      "load_per_pod": 5.5,
+      "ttfa_p95_ms": 870.0,
+      "action": "scale_up (+1)"
+    },
+    {
+      "hour": 6,
+      "time": "06:00",
+      "active_calls": 26,
+      "replicas": 7,
+      "load_per_pod": 8.67,
+      "ttfa_p95_ms": 1626.7,
+      "action": "scale_up (+4)"
+    },
+    {
+      "hour": 7,
+      "time": "07:00",
+      "active_calls": 44,
+      "replicas": 11,
+      "load_per_pod": 6.29,
+      "ttfa_p95_ms": 1031.4,
+      "action": "scale_up (+4)"
+    },
+    {
+      "hour": 8,
+      "time": "08:00",
+      "active_calls": 61,
+      "replicas": 16,
+      "load_per_pod": 5.08,
+      "ttfa_p95_ms": 795.0,
+      "action": "scale_up (+4)"
+    },
+    {
+      "hour": 9,
+      "time": "09:00",
+      "active_calls": 69,
+      "replicas": 18,
+      "load_per_pod": 4.06,
+      "ttfa_p95_ms": 610.6,
+      "action": "scale_up (+1)"
+    },
+    {
+      "hour": 10,
+      "time": "10:00",
+      "active_calls": 59,
+      "replicas": 19,
+      "load_per_pod": 3.11,
+      "ttfa_p95_ms": 573.2,
+      "action": "draining (wait 4/5m)"
+    },
+    {
+      "hour": 11,
+      "time": "11:00",
+      "active_calls": 45,
+      "replicas": 16,
+      "load_per_pod": 2.81,
+      "ttfa_p95_ms": 564.4,
+      "action": "draining (wait 2/5m)"
+    },
+    {
+      "hour": 12,
+      "time": "12:00",
+      "active_calls": 53,
+      "replicas": 14,
+      "load_per_pod": 4.42,
+      "ttfa_p95_ms": 675.0,
+      "action": "scale_up (+2)"
+    },
+    {
+      "hour": 13,
+      "time": "13:00",
+      "active_calls": 71,
+      "replicas": 18,
+      "load_per_pod": 5.07,
+      "ttfa_p95_ms": 792.9,
+      "action": "scale_up (+4)"
+    },
+    {
+      "hour": 14,
+      "time": "14:00",
+      "active_calls": 69,
+      "replicas": 19,
+      "load_per_pod": 3.63,
+      "ttfa_p95_ms": 588.9,
+      "action": "draining (wait 2/5m)"
+    },
+    {
+      "hour": 15,
+      "time": "15:00",
+      "active_calls": 58,
+      "replicas": 18,
+      "load_per_pod": 3.22,
+      "ttfa_p95_ms": 576.7,
+      "action": "draining (wait 1/5m)"
+    },
+    {
+      "hour": 16,
+      "time": "16:00",
+      "active_calls": 41,
+      "replicas": 15,
+      "load_per_pod": 2.73,
+      "ttfa_p95_ms": 562.0,
+      "action": "draining (wait 1/5m)"
+    },
+    {
+      "hour": 17,
+      "time": "17:00",
+      "active_calls": 27,
+      "replicas": 11,
+      "load_per_pod": 2.45,
+      "ttfa_p95_ms": 553.6,
+      "action": "draining (wait 1/5m)"
+    },
+    {
+      "hour": 18,
+      "time": "18:00",
+      "active_calls": 19,
+      "replicas": 7,
+      "load_per_pod": 2.71,
+      "ttfa_p95_ms": 561.4,
+      "action": "draining (wait 1/5m)"
+    },
+    {
+      "hour": 19,
+      "time": "19:00",
+      "active_calls": 15,
+      "replicas": 5,
+      "load_per_pod": 3.0,
+      "ttfa_p95_ms": 570.0,
+      "action": "draining (wait 1/5m)"
+    },
+    {
+      "hour": 20,
+      "time": "20:00",
+      "active_calls": 12,
+      "replicas": 4,
+      "load_per_pod": 3.0,
+      "ttfa_p95_ms": 570.0,
+      "action": "draining (wait 1/5m)"
+    },
+    {
+      "hour": 21,
+      "time": "21:00",
+      "active_calls": 8,
+      "replicas": 3,
+      "load_per_pod": 2.67,
+      "ttfa_p95_ms": 560.0,
+      "action": "draining (wait 1/5m)"
+    },
+    {
+      "hour": 22,
+      "time": "22:00",
+      "active_calls": 7,
+      "replicas": 2,
+      "load_per_pod": 3.5,
+      "ttfa_p95_ms": 585.0,
+      "action": "steady"
+    },
+    {
+      "hour": 23,
+      "time": "23:00",
+      "active_calls": 6,
+      "replicas": 2,
+      "load_per_pod": 3.0,
+      "ttfa_p95_ms": 570.0,
+      "action": "steady"
+    }
+  ]
+}

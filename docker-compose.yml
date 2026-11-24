@@ -1,11 +1,25 @@
 version: '3.8'
 
 services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: voice-client
+    ports:
+      - "3001:80"
+    depends_on:
+      - gateway
+    networks:
+      - voice-net
+    restart: unless-stopped
+
   gateway:
     build:
       context: ./gateway
       dockerfile: Dockerfile
     container_name: voice-gateway
+    profiles: ["default", "stub-llm"]
     ports:
       - "8443:8443"
     environment:
@@ -30,8 +44,30 @@ services:
       context: ./services/agent
       dockerfile: Dockerfile
     container_name: voice-agent
+    profiles: ["default", "stub-llm"]
     ports:
       - "8003:8003"
+    environment:
+      - LLM_GATEWAY_URL=http://llm-gateway:8005
+    networks:
+      - voice-net
+    restart: unless-stopped
+
+  llm-gateway:
+    build:
+      context: ./services/llm_gateway
+      dockerfile: Dockerfile
+    container_name: voice-llm-gateway
+    profiles: ["default", "stub-llm"]
+    ports:
+      - "8005:8005"
+    environment:
+      - LLM_GATEWAY_HOST=0.0.0.0
+      - LLM_GATEWAY_PORT=8005
+      - LLM_GATEWAY_PROFILE=default
+      - LLM_BACKEND_DEFAULT=stub
+    volumes:
+      - ./config:/config:ro
     networks:
       - voice-net
     restart: unless-stopped

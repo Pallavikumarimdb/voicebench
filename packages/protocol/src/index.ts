@@ -146,6 +146,81 @@ export interface BrainResponse {
   text: string;
   events: BrainEvent[];
   metrics: BrainMetrics;
+  x_voiceai?: Record<string, any>;
+}
+
+// Plan 1 Section 6 P3-T2: Constrained Decoding Brain Turn Schema v1
+export type BrainTurnIntent =
+  // Generic & Shared
+  | 'greet'
+  | 'confirm_identity'
+  | 'deny_identity'
+  | 'provide_dob'
+  | 'request_agent_handoff'
+  | 'close_call'
+  | 'clarification'
+  // Collections
+  | 'disclose_balance'
+  | 'inquire_situation'
+  | 'propose_payment_plan'
+  | 'accept_terms'
+  | 'request_installments'
+  | 'claim_hardship'
+  | 'claim_already_paid'
+  | 'request_stop_contact'
+  | 'third_party_notice'
+  // Screening
+  | 'describe_experience'
+  | 'confirm_qualification'
+  | 'provide_availability'
+  | 'agree_schedule'
+  // KYC
+  | 'submit_document'
+  | 'confirm_address'
+  | 'provide_info'
+  // Custom
+  | 'inquire'
+  | 'confirm'
+  | 'escalate';
+
+export type BrainTurnNextState =
+  // Collections states
+  | 'greet'
+  | 'verify_identity'
+  | 'disclose'
+  | 'discover'
+  | 'negotiate'
+  | 'capture_promise'
+  | 'close'
+  | 'third_party'
+  | 'stop_contact'
+  | 'escalate_human'
+  | 'dispute_or_paid'
+  // Screening states
+  | 'experience_inquiry'
+  | 'qualification_check'
+  | 'availability_check'
+  | 'schedule_interview'
+  // KYC states
+  | 'document_verification'
+  | 'address_confirmation'
+  | 'risk_assessment'
+  | 'kyc_approved'
+  // Custom states
+  | 'inquiry'
+  | 'action'
+  | 'resolve';
+
+export interface BrainToolCall {
+  name: string;
+  arguments: Record<string, any>;
+}
+
+export interface BrainTurnV1 {
+  intent: BrainTurnIntent;
+  next_state: BrainTurnNextState;
+  utterance: string;
+  tool_calls?: BrainToolCall[];
 }
 
 // Agent streaming and voice message types
@@ -194,10 +269,93 @@ export interface StatusMessage {
   tEmit: number;
 }
 
+export interface PlaybackStartMessage {
+  type: 'playback_start';
+  uttId?: number;
+  tPlaybackStart: number;
+}
+
+// Audit Schema v2 and Chain Head Protocol Types (Plan 1 Section 5.3)
+export interface AuditGuardEvent {
+  rule_id: string;
+  stage: 'pre' | 'post';
+  action: 'allow' | 'rewrite' | 'block';
+  detail?: string;
+}
+
+export interface RoutingDecision {
+  tier: string;
+  backend?: string;
+  model?: string;
+  rule_id?: string;
+  reason_code?: string;
+  policy_version?: string;
+  cache?: 'hit' | 'miss';
+  constraint_mode?: string;
+  fallback_chain?: Array<{ from: string; to: string; reason: string }>;
+  ttft_ms?: number;
+  tokens_in?: number;
+  tokens_out?: number;
+  cached_tokens?: number;
+  cancelled?: boolean;
+}
+
+export interface AuditTimingStages {
+  vad_hangover: number;
+  asr: number;
+  pre_guard: number;
+  llm_ttft: number;
+  llm_total: number;
+  post_guard: number;
+  tts_first_audio: number;
+  transport: number;
+}
+
+export interface AuditTimings {
+  vad_end_to_first_audio_ms: number;
+  stages: AuditTimingStages;
+}
+
+export interface AuditRecordV2 {
+  schema_version: 2;
+  call_id: string;
+  turn_index: number;
+  ts: string;
+  caller_text: string;
+  agent_attempted_text: string;
+  agent_final_text: string;
+  guard_events: AuditGuardEvent[];
+  route: RoutingDecision | { tier: string };
+  timings: AuditTimings;
+  client_generated?: boolean;
+  prev_hash: string;
+  hash?: string;
+}
+
+export interface ChainHeadRecord {
+  type: 'chain_head';
+  call_id: string;
+  head_hash: string;
+  alg: 'ed25519' | 'hmac-sha256';
+  key_id: string;
+  signature: string;
+}
+
+export interface PolicyChangeRecord {
+  ts: string;
+  who: string;
+  old_hash: string;
+  new_hash: string;
+  diff_summary: Record<string, any> | string;
+  prev_hash: string;
+  hash: string;
+}
+
 export type GatewayMessage =
   | PartialMessage
   | FinalMessage
   | TranslatedMessage
+  | PlaybackStartMessage
   | AgentTextMessage
   | AgentAudioChunkMessage
   | AgentSpeechStartMessage

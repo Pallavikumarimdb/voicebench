@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-deployment
+  namespace: voiceai
+  labels:
+    app: voice-client
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: voice-client
+  template:
+    metadata:
+      labels:
+        app: voice-client
+    spec:
+      containers:
+        - name: client
+          image: voiceai/client:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-service
+  namespace: voiceai
+spec:
+  selector:
+    app: voice-client
+  ports:
+    - port: 80
+      targetPort: 80

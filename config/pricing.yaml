@@ -1,0 +1,89 @@
+# VoiceAI Infra Cost Model & Pricing Configuration (Plan 1 Section 6 P5-T6)
+# Retrieval Date: 2026-11-24
+# Sources:
+#   - OpenAI API Pricing (https://openai.com/api/pricing/) - Retrieved 2026-11-24
+#   - Anthropic Model Pricing (https://www.anthropic.com/pricing) - Retrieved 2026-11-24
+#   - DeepSeek API Pricing (https://api-docs.deepseek.com/quick_start/pricing) - Retrieved 2026-11-24
+#   - AWS EC2 c7i.2xlarge compute cost (us-east-1 on-demand) - Retrieved 2026-11-24
+
+version: "1.0.0"
+retrieval_date: "2026-11-24"
+currency: "USD"
+
+# 1. Relative Cost Units (Normalized to Tier 1 Local CPU In-House = 1.0x)
+relative_units:
+  t0_fast_path:
+    relative_cost: 0.00
+    description: "In-process deterministic regex/rule match (< 2 ms). Consumes 0 LLM tokens."
+  t0_response_cache:
+    relative_cost: 0.01
+    description: "In-memory exact-hash response cache (< 2 ms). Negligible hash lookup cost."
+  t1_local_cpu:
+    relative_cost: 1.00
+    description: "In-house self-hosted Qwen2.5-7B (int4) on 8-core CPU pod (~$0.357/hr AWS amortized)."
+  t2_cloud_small:
+    relative_cost: 2.20
+    description: "Cloud efficient tier (GPT-4o-mini / Claude 3.5 Haiku) for general fallback."
+  t2_cloud_large:
+    relative_cost: 14.50
+    description: "Cloud frontier tier (GPT-4o / Claude 3.5 Sonnet) for high-risk legal/dispute escalation."
+
+# 2. Absolute Commercial Vendor Pricing (USD per 1M tokens as of 2026-11-24)
+vendor_pricing_per_1m_tokens:
+  # In-House / Self-Hosted (Amortized compute cost per 1M tokens)
+  ollama_local:
+    input_usd_per_1m: 0.05
+    cached_input_usd_per_1m: 0.01
+    output_usd_per_1m: 0.08
+    source: "Amortized c7i.2xlarge CPU server instances ($0.357/hr) at 4 active sessions/pod"
+    retrieved_at: "2026-11-24"
+
+  stub:
+    input_usd_per_1m: 0.00
+    cached_input_usd_per_1m: 0.00
+    output_usd_per_1m: 0.00
+    source: "Mock stub test adapter"
+    retrieved_at: "2026-11-24"
+
+  # OpenAI Official (Retrieved 2026-11-24 from openai.com/api/pricing)
+  openai_gpt_4o_mini:
+    input_usd_per_1m: 0.150
+    cached_input_usd_per_1m: 0.075
+    output_usd_per_1m: 0.600
+    source: "https://openai.com/api/pricing/ (GPT-4o-mini)"
+    retrieved_at: "2026-11-24"
+
+  openai_gpt_4o:
+    input_usd_per_1m: 2.500
+    cached_input_usd_per_1m: 1.250
+    output_usd_per_1m: 10.000
+    source: "https://openai.com/api/pricing/ (GPT-4o)"
+    retrieved_at: "2026-11-24"
+
+  # Anthropic Official (Retrieved 2026-11-24 from anthropic.com/pricing)
+  anthropic_claude_3_5_haiku:
+    input_usd_per_1m: 0.800
+    cached_input_usd_per_1m: 0.080
+    output_usd_per_1m: 4.000
+    source: "https://www.anthropic.com/pricing (Claude 3.5 Haiku)"
+    retrieved_at: "2026-11-24"
+
+  anthropic_claude_3_5_sonnet:
+    input_usd_per_1m: 3.000
+    cached_input_usd_per_1m: 0.300
+    output_usd_per_1m: 15.000
+    source: "https://www.anthropic.com/pricing (Claude 3.5 Sonnet)"
+    retrieved_at: "2026-11-24"
+
+  # DeepSeek Official (Retrieved 2026-11-24 from api-docs.deepseek.com)
+  deepseek_v3:
+    input_usd_per_1m: 0.140
+    cached_input_usd_per_1m: 0.014
+    output_usd_per_1m: 0.280
+    source: "https://api-docs.deepseek.com/quick_start/pricing (DeepSeek-V3)"
+    retrieved_at: "2026-11-24"
+
+# 3. Currency Conversion (Retrieved 2026-11-24)
+exchange_rate:
+  usd_to_jpy: 154.20
+  retrieved_at: "2026-11-24"

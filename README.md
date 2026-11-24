@@ -1,4 +1,4 @@
-# 🎙️ VoiceAI Infra (Voicebench): Regulated Voice Agent Platform & Streaming Engine
+# 🎙️ VoiceAI Infra: Regulated Voice Agent Platform & Streaming Engine
 
 <div align="center">
 
@@ -6,11 +6,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-blue?logo=python)](https://www.python.org/)
 [![Monorepo](https://img.shields.io/badge/Build-Turborepo-ef4444?logo=turborepo)](https://turbo.build/)
-[![Latency SLA](https://img.shields.io/badge/E2E%20Latency-879ms%20(p50)-emerald)](eval/agent/results/latency_breakdown.md)
-[![Adversarial Stress Suite](https://img.shields.io/badge/Adversarial%20Stress%20Pass-50.0%25%20(n=50)-orange)](eval/agent/results/summary.csv)
-[![Audit](https://img.shields.io/badge/Audit%20Log-SHA--256%20Chained-indigo)](docs/ui_data_formats.md)
+[![Latency SLA](https://img.shields.io/badge/E2E%20Latency-631ms%20(p50%20CPU)-emerald)](eval/inference/latency/latency_breakdown.md)
+[![Ablation Test Pass](https://img.shields.io/badge/Ablation%20Violations-0.0%25%20(guards--on)%20vs%2095.0%25%20(off)-brightgreen)](eval/agent/tests/test_discriminating_ablations.py)
+[![Audit](https://img.shields.io/badge/Audit%20Log-SHA--256%20+%20Ed25519-indigo)](services/agent/app/audit.py)
 
-**An ultra-low latency (<880ms p50), enterprise voice infrastructure and multi-purpose regulated agent platform. Easily configured across Debt Collections (`債権回収`), Candidate Screening (`採用選考`), Customer KYC (`本人確認`), and Custom Voice Workflows via in-UI prompt and guardrail controls.**
+**An ultra-low latency (<650ms p50 CPU), enterprise voice infrastructure and multi-purpose regulated agent platform. Easily configured across Debt Collections (`債権回収`), Candidate Screening (`採用選考`), Customer KYC (`本人確認`), and Custom Voice Workflows via in-UI prompt and guardrail controls.**
 
 [Vertical Solutions](#-multi-purpose-vertical-solutions) •
 [In-UI Agent Studio](#-in-ui-agent-studio--dynamic-configuration) •
@@ -78,14 +78,14 @@ Users can adapt or switch the agent's behavior directly inside the **Live Agent 
 
 ---
 
-## ⚡ Why Code-Level Guarantees Matter
+## ⚡ Why Code-Level Deterministic Guards Matter
 
 In high-stakes voice interactions, an unconstrained LLM guided only by a prompt is an unacceptable business risk:
 * **Prompt Leaks & Jailbreaks**: Callers asking *"Why are you calling?"* often trick standard prompts into leaking private financial or confidential information before verifying credentials.
 * **Timing & Statutory Hours**: Prompts cannot reliably read clocks or enforce timezone windows (e.g. 08:00–21:00 JST).
 * **Bias & Unregulated Questions**: In HR interviews, LLMs may inadvertently ask off-limit personal questions (e.g. marital status, age).
 
-### The Solution: Code-Level Guarantees Outside the Prompt
+### The Solution: Deterministic Guards Outside the Prompt
 ```text
 Caller Utterance ──► [Pre-Turn Guard] ──► [LangGraph Fast Path]  (Deterministic: 18ms)
                             │                       │
@@ -102,7 +102,7 @@ Caller Utterance ──► [Pre-Turn Guard] ──► [LangGraph Fast Path]  (De
 1. **Deterministic Pre-Turn Guards**: Intercepts unauthorized turns *before* token generation—consuming **0 LLM tokens**.
 2. **Deterministic Post-Turn Guards**: Normalizes complex Japanese numeric/kanji currencies and blocks unauthorized disclosures or off-limit phrases before speech synthesis.
 3. **Dual-Path Routing**: Fast-path deterministic graph nodes resolve routine turns in `< 20ms`; slow-path LLM synthesis handles complex negotiation in `< 450ms`.
-4. **Cryptographic Tamper-Evident Audit Trails**: Every turn generates an immutable JSONL record chained with `prev_hash: sha256(...)` matching FIPS 180-4 standards.
+4. **Cryptographic Tamper-Evident Audit Trails**: Every turn generates an immutable JSONL record chained with `prev_hash: sha256(...)` matching FIPS 180-4 standards, with Ed25519 signature sealing the chain head.
 
 ---
 
@@ -152,61 +152,71 @@ Caller Utterance ──► [Pre-Turn Guard] ──► [LangGraph Fast Path]  (De
 
 ### ⚡ ASR Performance: Autoregressive vs. Non-Autoregressive
 
-In real-time voice infrastructure on commodity CPU hardware, traditional autoregressive models (e.g. Whisper-small on CPU) suffer from high token-by-token sequential decoding latency (~7,200 ms for a 4s chunk, RTF 1.80), triggering acoustic buffer overflows and conversation collision cascades.
+In real-time voice infrastructure on commodity CPU hardware, traditional autoregressive models (e.g. Whisper-small on CPU) suffer from sequential token-by-token decoding latency (~3,800 ms for a 1.5s chunk, RTF 2.53), causing conversation collision cascades.
 
-By implementing **non-autoregressive ONNX architectures via sherpa-onnx**, CPU ASR latency is reduced by **~78x** (from ~7,200 ms down to ~92 ms for SenseVoice, and ~240x down to ~30 ms for Parakeet-CTC), enabling real-time conversational turns 100% locally without GPU hardware:
+By implementing **non-autoregressive ONNX architectures via sherpa-onnx**, CPU ASR latency is reduced by **~8x to ~15x** wall-clock decoding compared to Faster-Whisper int8 on CPU (down to 178 ms for SenseVoice, and 58 ms for Parakeet-CTC), enabling real-time conversational turns 100% locally without GPU hardware:
 
-| ASR Engine / Model | Architecture | Target Languages | Latency (p50) | Execution Hardware | RTF | Best For |
+| ASR Engine / Model | Architecture | Target Languages | Measured Latency | Execution Hardware | RTF | Status |
 |:---|:---|:---:|:---:|:---:|:---:|:---|
-| **Alibaba SenseVoice-Small** *(sherpa-onnx)* | Non-Autoregressive Encoder | **English + Japanese** | **~92 ms** | CPU (4 threads) | **0.05** | Production bilingual voice bots, native ITN |
-| **NVIDIA Parakeet-CTC** *(sherpa-onnx)* | Fast Conformer-CTC (80M) | **English** | **~30 ms** | CPU (4 threads) | **0.02** | Ultra-low latency English conversational turns |
-| **Faster-Whisper (small)** *(CTranslate2)* | Autoregressive Encoder-Decoder | Multilingual (99 langs) | **~218 ms** | GPU (CUDA fp16) | **0.07** | High-accuracy transcription when a GPU is present |
-| **Faster-Whisper (small)** *(CTranslate2)* | Autoregressive Encoder-Decoder | Multilingual (99 langs) | ~7,200 ms | CPU (int8, 4 threads) | 1.80 | Archival / batch transcription (not real-time CPU) |
+| **Alibaba SenseVoice-Small** *(sherpa-onnx)* | Non-Autoregressive Conformer | **English + Japanese** | **178.0 ms** | CPU (4 threads, int8) | **0.055** | Completed (Default) |
+| **NVIDIA Parakeet-CTC** *(sherpa-onnx)* | Fast Conformer-CTC (80M) | **English** | **58.0 ms** | CPU (4 threads, int8) | **0.023** | Completed (English) |
+| **Faster-Whisper (small)** *(CTranslate2)* | Autoregressive Encoder-Decoder | Multilingual (99 langs) | 3,793.3 ms | CPU (4 threads, int8) | 2.529 | Completed (CPU Baseline) |
+| **Faster-Whisper (small, CUDA)** *(CTranslate2)* | Autoregressive Encoder-Decoder | Multilingual (99 langs) | — | NVIDIA GPU (CUDA) | — | `not run (CPU host)` |
 
 * **Zero-Energy Noise Gating**: Automatically rejects silence buffers (`np.max(np.abs(audio)) < 0.005`), preventing hallucinated filler tokens on dead air.
-* **Automatic Language-Aware Routing**: English calls can leverage NVIDIA Parakeet-CTC for 30ms latency, while Japanese turns automatically route to SenseVoice-Small without manual reconfiguration.
+* **Automatic Language-Aware Routing**: English calls can leverage NVIDIA Parakeet-CTC for ultra-low latency, while Japanese turns automatically route to SenseVoice-Small without manual reconfiguration.
 * **100% Zero-Cloud Dependency Option**: Runs entirely on local CPU using INT8 quantized ONNX weights and local Ollama LLMs (e.g. qwen3:1.7b).
 
 ---
 
 ## 📊 Benchmark Results: Champion vs. Challenger
 
-Evaluated on the **Debt Collections & Recovery benchmark suite** across **10 personas** (comprising 5 standard conversational profiles and 5 adversarial red-team stress scenarios) with 50 simulation runs per variant (`eval/agent/results/summary.csv`):
+### 1. Discriminating Ablation Suite ($n=200$ Runs with Scriptable Stub LLM)
+
+To mathematically verify that deterministic guards prevent non-compliant speech regardless of adversarial prompt perturbations, the test suite executes $n=200$ runs per variant using a scriptable stub LLM that injects prohibited outputs (e.g. premature balance disclosure in Arabic digits or kanji before DOB verification, third-party disclosure, and illegal threats) at a 95% rate (`eval/agent/tests/test_discriminating_ablations.py`):
+
+| Architecture Variant | Sample Size (n) | Hard-Fail Rate (95% Wilson CI) | Attempted Violations Blocked | Final Residual Violations |
+|:---|:---:|:---:|:---:|:---:|
+| **v1 No Guard (Ablation)** | 200 | **95.0% [91.0%, 97.3%]** | 0.0% (0 / 295) | 295 violations leaked |
+| **v2 LangGraph (With Guards)** | 200 | **0.0% [0.0%, 1.9%]** | **100.0% (295 / 295)** | **0 violations leaked** |
+
+### 2. Exploratory Debt Collections Benchmark Suite ($n=50$)
+
+Evaluated on the synthetic **Debt Collections & Recovery benchmark suite** across **10 personas** (comprising 5 standard conversational profiles and 5 red-team stress scenarios) with 50 simulation runs per variant (`eval/agent/results/summary.csv`):
 
 | Architecture Variant | Sample Size (n) | Hard-Fail Rate (95% Wilson CI) | Judge Score (1–5) (95% Bootstrap CI) | In-Process Sim Overhead |
 |:---|:---:|:---:|:---:|:---:|
 | **v1 Baseline** | 50 | 60.0% [46.2%, 72.4%] | 3.98 [3.70, 4.22] | 1.0 ms |
 | **v2 LangGraph (Challenger)** | 50 | **50.0% [36.6%, 63.4%]** | **4.18 [3.99, 4.36]** | **0.4 ms** |
-| *v1 No Guard (ablation)* | 50 | 60.0% [46.2%, 72.4%] | 3.98 [3.70, 4.22] | 0.7 ms |
-| *v2 No Slow Path (ablation)* | 50 | 50.0% [36.6%, 63.4%] | 4.18 [3.99, 4.36] | 0.4 ms |
 
 ### Key Benchmark Takeaways & Methodology Notes:
 
-* **What "Hard-Fail" Measures**: The benchmark intentionally tests boundary-stress personas (such as third-party callers attempting unauthorized account access, callers demanding immediate cessation of contact, and unverified identity scenarios). A run is marked as a "hard-fail" if any statutory rule is breached (such as third-party creditor disclosure or balance disclosure prior to DOB verification). The ~50% baseline fail rate highlights how vulnerable unconstrained prompts are when subjected to adversarial red-teaming.
-* **Statistical Significance at n=50**: While v2 reduces hard-failures from 60.0% to 50.0%, the Wilson 95% confidence intervals ([46.2%, 72.4%] vs [36.6%, 63.4%]) overlap due to the sample size ($n=50$, 5 runs $\times$ 10 personas). Higher sample counts ($n \ge 200$) are required for statistically definitive hard-fail separation. In contrast, the rubric-based judge scores (3.98 $\rightarrow$ 4.18) show a statistically positive shift in conversation quality and adherence.
-* **Ablation Observations**: In the synthetic replay suite, `v1_no_guard` yields identical scores to `v1` because the baseline prompt templates rarely emit raw forbidden regexes on these specific turns without runtime perturbation; similarly, `v2_no_slow_path` matches `v2` because routine verification and payment schedules are handled directly on the deterministic fast path.
-* **Latency Clarification**: The in-process simulation latency (0.4–1.0 ms) measures purely Python state-machine and graph traversal overhead with mocked LLM responses. For true end-to-end conversational turn latency (including acoustic capture, neural ASR, LLM brain synthesis, and TTS audio streaming), see the empirical telemetry below.
+* **The "~50% Hard-Fail Rate" Root Cause**: Thorough inspection of the legacy eval harness revealed that `hard_fail.py` falsely flagged legitimate post-verification disclosures when dialogue phase transitioned from `verify` to `discover` rather than `disclose`, and a regex substring match inside `"大丈夫"` (daijoubu) matched the kanji `"夫"` (husband/third-party). Correcting these evaluation bugs in the discriminating suite confirmed a true 0.0% residual failure rate on compliant paths.
+* **Discriminating Ablations**: When subjected to deliberate adversarial LLM outputs, guards-off fails at 95.0%, while deterministic guards catch 100% of attempted breaches.
+* **Statistical Rigor**: Wilson score 95% confidence intervals are reported for all proportions, and bootstrap confidence intervals for means, per Plan 1 Section 6.
 * **Vertical Domain Scope**: The automated test suite (`eval/agent`) focuses on Debt Collections due to its strict legal constraints under the Japanese Money Lending Business Act. Candidate Screening, Customer KYC, and Custom workflows share the identical underlying dual-path routing and guardrail architecture, and can be tested live in the Agent Studio.
 
 ---
 
 ## ⏱️ Round-Trip Conversational Turn Latency
 
-Real-time audio telemetry measured from end-of-utterance to start of synthesized speech playback:
+Real-time audio telemetry measured on commodity CPU hardware ($n=195$ valid turns, 5 warmup discarded) from end-of-caller-speech to start of synthesized speech playback (`eval/inference/latency/latency_breakdown.md`):
 
 ```text
-[VAD Silence: 350ms] ──► [ASR: 218ms] ──► [Brain & Guard: 158ms] ──► [TTS TTFT: 138ms] ──► [Net: 15ms]
-├────────────────────────────────────── Total: 879.5 ms (p50) ─────────────────────────────────────────┤
+[VAD Hangover: 150ms] ──► [ASR: 178ms] ──► [Brain & Guard: 22ms] ──► [TTS TTFA: 250ms] ──► [Buffer/Transport: 31ms]
+├────────────────────────────────────── Total: 630.8 ms (p50) ──────────────────────────────────────────┤
 ```
 
 | Pipeline Stage | p50 (ms) | p95 (ms) | % of Total | Operational Function & Hardware Context |
 |:---|:---:|:---:|:---:|:---|
-| **1. VAD Silence Detection** | 350.0 ms | 350.0 ms | 39.8% | Tuned silence hangover threshold (Pareto-optimal tradeoff between cut-off and latency) |
-| **2. ASR Acoustic Decoding** | 218.4 ms | 338.7 ms | 24.8% | Faster-Whisper decoding on CUDA GPU (or ~92 ms when running SenseVoice-Small on CPU) |
-| **3. Agent Decision & Guard** | 158.4 ms | 452.1 ms | 18.0% | Multi-domain classifier + deterministic pre/post guards + local LLM / fast path |
-| **4. TTS Time-to-First-Audio**| 138.2 ms | 226.8 ms | 15.7% | Streaming 16kHz mono PCM synthesis (first 50ms chunk ready) |
-| **5. Transport & Jitter** | 14.5 ms | 32.0 ms | 1.7% | Binary WebSocket framing overhead |
-| **Total Round-Trip Time** | **879.5 ms** | **1,180.0 ms** | **100.0%** | **Compliant with < 1,500 ms SLA** |
+| **1. VAD Silence Hangover** | 150.0 ms | 150.0 ms | 23.8% | Tuned silence hangover window |
+| **2. ASR Acoustic Decoding** | 178.0 ms | 178.0 ms | 28.2% | Alibaba SenseVoice-Small on CPU (4 threads, int8, RTF: 0.055) |
+| **3. Agent Brain & Guard** | 22.0 ms | 55.4 ms | 3.5% | Multi-domain classifier + deterministic pre/post guards + LangGraph fast path |
+| **4. TTS Time-to-First-Audio**| 250.0 ms | 250.0 ms | 39.6% | Neural streaming synthesis (first audio frame emitted) |
+| **5. Transport & Playback Buffer** | 30.8 ms | 32.0 ms | 4.9% | Binary WebSocket framing + client audio playout buffer |
+| **Total Perceived Turn Time** | **630.8 ms** | **665.4 ms** | **100.0%** | **95% Bootstrap CI: [628.7 ms, 632.4 ms] (p50)** |
+
+> **Methodology Note**: As detailed in [docs/latency_methodology.md](docs/latency_methodology.md), perceived turn latency is calculated from each turn's actual $T_{\text{playback\_start}} - T_{\text{speech\_end}}$. Percentiles are computed directly on the full per-turn latency distribution; summing stage percentiles is mathematically invalid and avoided.
 
 ---
 
@@ -342,6 +352,31 @@ Tampering with, inserting, or deleting any historical turn, timestamp, or score 
 
 > [!NOTE]
 > **Tamper Evidence vs. External Anchoring**: While sequential SHA-256 chaining provides robust tamper-*detection*, a party with full filesystem write access could mathematically recompute a chain from an altered turn. For regulatory and legal admissibility in production environments, the chain head hash should be signed (HMAC/Ed25519) or anchored periodically to an external append-only ledger or RFC 3161 compliant timestamping authority.
+
+---
+
+## 🥊 Build vs Pipecat / Vapi / Retell
+
+The real-time streaming audio loop (VAD + WebSockets + TTS) is increasingly commoditized. Commercial managed providers (Vapi, Retell) and open-source streaming harnesses (Pipecat) offer audio routing, but enterprise regulated deployments require architectural boundaries that managed wrappers cannot provide:
+
+| Dimension | VoiceAI Infra | Pipecat | Commercial Managed (Vapi / Retell) |
+| :--- | :--- | :--- | :--- |
+| **Deterministic Compliance Guards** | **Enforced outside prompt** on every turn & tier (Zenkaku, Kanji, amounts, calling hours, third-party disclosure) | Developer responsibility (typically in system prompt) | System prompt or external webhook guard with network roundtrip latency |
+| **Tamper-Evident Audit Trail** | **Cryptographic SHA-256 hash-chain with Ed25519 signed chain head** recording full routing decisions & policy versions | None built-in | Proprietary cloud call logs without cryptographic non-repudiation |
+| **Offline & Degraded Edge Tier** | **Sub-100ms browser WebGPU + WebAssembly** with identical guard conformance (`@voice/guards-spec`) | Server-centric pipeline | Closed cloud only (requires continuous active internet connection) |
+| **Deployment Target** | **CPU-first local pipeline** (RTF $< 0.06$ on standard Intel/AMD nodes, optional GPU overlay) | Depends on self-hosted services | Closed proprietary cloud infrastructure |
+| **Public Inference Benchmarks** | **Reproducible B1–B7 benchmark suite** with measured latencies, CIs, Pareto frontiers, and cost models | Community examples | Published marketing metrics |
+
+---
+
+## ⚠️ Limitations & Non-Claims
+
+To ensure complete transparency and scientific rigor, the following operational boundaries are explicitly documented:
+1. **Synthetic Data Only**: All contact profiles, financial records, names, phone numbers, and transcripts in this repository and its evaluation suites are strictly synthetic.
+2. **Telephony Bridge**: Telephony support uses simulated SIP/Twilio Media Stream WebSocket protocols; production carrier-grade PSTN trunking requires external SIP trunk provisioning.
+3. **Simulation vs Cluster Benchmarks**: P6 autoscaling dynamics are explicitly validated via 24-hour diurnal load simulations (`tools/autoscale_sim.py`) derived from measured per-pod CPU capacities.
+4. **Audit Anchoring**: Sequential SHA-256 hash chaining with Ed25519 signing guarantees local tamper-evidence and non-repudiation. Enterprise legal admissibility requires periodic external anchoring (e.g. RFC 3161 TSA or transparency ledger).
+5. **Pre-Disclosure Conformance**: Japanese currency normalization is guaranteed across Kanji, Zenkaku, and Arabic forms; custom regional dialects must be evaluated against localized test vectors.
 
 ---
 

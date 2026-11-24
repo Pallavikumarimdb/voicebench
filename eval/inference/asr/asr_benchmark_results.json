@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "timestamp": "2026-11-23T11:49:21Z",
+    "cpu_model": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+    "logical_cores": 12,
+    "cpu_threads_configured": 4,
+    "compute_type": "int8",
+    "beam_size": 1
+  },
+  "benchmarks": [
+    {
+      "engine": "Alibaba SenseVoice-Small",
+      "framework": "sherpa-onnx",
+      "architecture": "Non-Autoregressive Conformer",
+      "language": "ja",
+      "hardware": "CPU (4 threads)",
+      "compute_type": "int8",
+      "beam_size": 1,
+      "audio_duration_s": 3.26,
+      "latency_ms": 178.0,
+      "rtf": 0.055,
+      "error_rate_metric": "CER",
+      "error_rate_value": 0.8333,
+      "transcription": "はい、もしもし 田中 です。",
+      "status": "completed"
+    },
+    {
+      "engine": "NVIDIA NeMo Parakeet-CTC",
+      "framework": "sherpa-onnx",
+      "architecture": "Fast Conformer-CTC (80M)",
+      "language": "en",
+      "hardware": "CPU (4 threads)",
+      "compute_type": "int8",
+      "beam_size": 1,
+      "audio_duration_s": 2.5,
+      "latency_ms": 58.0,
+      "rtf": 0.023,
+      "error_rate_metric": "WER",
+      "error_rate_value": 0.0,
+      "transcription": "uh",
+      "status": "completed"
+    },
+    {
+      "engine": "Faster-Whisper (small)",
+      "framework": "CTranslate2",
+      "architecture": "Autoregressive Encoder-Decoder",
+      "language": "ja",
+      "hardware": "CPU (4 threads)",
+      "compute_type": "int8",
+      "beam_size": 1,
+      "audio_duration_s": 1.5,
+      "latency_ms": 3793.3,
+      "rtf": 2.529,
+      "error_rate_metric": "CER",
+      "error_rate_value": 0.8333,
+      "transcription": "はい、もしもし。",
+      "status": "completed"
+    },
+    {
+      "engine": "Faster-Whisper (small, GPU CUDA)",
+      "framework": "CTranslate2",
+      "architecture": "Autoregressive Encoder-Decoder",
+      "language": "ja / en",
+      "hardware": "NVIDIA GPU (CUDA)",
+      "compute_type": "float16",
+      "status": "not run (CPU host)"
+    }
+  ]
+}

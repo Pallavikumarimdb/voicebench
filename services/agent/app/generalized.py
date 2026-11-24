@@ -329,8 +329,9 @@ class GeneralizedVoiceAgent:
             "tokensOut": 0,
             "model": f"template_{domain}_{language}",
         }
-        if llm_provider in ("local", "openai"):
-            reply_text, metrics = self._phrase_with_llm(
+        x_voiceai = None
+        if llm_provider in ("local", "openai", "gateway"):
+            reply_text, metrics, x_voiceai = self._phrase_with_llm(
                 ctx, reply_text, turn_events, llm_provider, llm_model
             )
 
@@ -347,12 +348,15 @@ class GeneralizedVoiceAgent:
                 "stage": state.get("stage", "active"),
             })
 
-        return {
+        result = {
             "text": reply_text,
             "events": events,
             "state": state,
             "metrics": metrics,
         }
+        if x_voiceai:
+            result["x_voiceai"] = x_voiceai
+        return result
 
     # Claims the template did NOT make: the LLM must not introduce these.
     _FORBIDDEN_NEW_CLAIMS = (
@@ -369,8 +373,8 @@ class GeneralizedVoiceAgent:
         turn_events: List[Dict[str, Any]],
         provider: str,
         model: Optional[str],
-    ) -> tuple[str, Dict[str, Any]]:
-        """Restyle the template reply via LLM. Returns (reply, metrics)."""
+    ) -> tuple[str, Dict[str, Any], Optional[Dict[str, Any]]]:
+        """Restyle the template reply via LLM. Returns (reply, metrics, x_voiceai)."""
         from .llm import llm_client
 
         fallback_metrics = {
@@ -387,44 +391,48 @@ class GeneralizedVoiceAgent:
                 for m in history
             )
             stage = ctx.state.get("stage", "active")
+            # Plan 1 P1-T5: Keep static prefix byte-stable across all turns of a session.
+            # Dynamic stage, conversation history, and template reply are placed in the dynamic user turn.
             system = (
                 f"You are a professional {ctx.state.get('domain', 'custom')} voice agent "
                 f"speaking {ctx.language}. Rephrase the AGENT LINE below naturally for spoken "
                 f"conversation in 1-2 short sentences. Keep every fact, amount, name, and "
                 f"commitment EXACTLY identical — add nothing new. Never claim identity "
                 f"verification, a recorded promise, a sent email, or any balance/amount "
-                f"unless present in the AGENT LINE. Conversation stage: {stage}."
+                f"unless present in the AGENT LINE."
             )
             if ctx.instructions:
                 system += f" Operator instructions: {ctx.instructions[:500]}"
             messages = [
                 {"role": "system", "content": system},
-                {"role": "user", "content": f"Conversation so far:\n{convo}\n\nAGENT LINE:\n{template_reply}"},
+                {"role": "user", "content": f"Conversation stage: {stage}\nConversation so far:\n{convo}\n\nAGENT LINE:\n{template_reply}"},
             ]
             timeout = float(os.getenv("AGENT_LOCAL_TIMEOUT_S", "12.0")) if provider == "local" else 3.5
             max_tok = 60 if provider == "local" else 100
+            risk_tier = ctx.state.get("risk_tier", "low")
             res = llm_client.complete_with(
                 provider, messages, model=model,
                 temperature=0.4, max_tokens=max_tok, timeout_s=timeout,
+                risk_tier=risk_tier, dialogue_state=stage
             )
             text = (res.get("text") or "").strip()
             if not text or len(text) > 600:
-                return template_reply, fallback_metrics
+                return template_reply, fallback_metrics, None
             lowered = text.lower()
             template_lowered = template_reply.lower()
             for claim in self._FORBIDDEN_NEW_CLAIMS:
                 if claim.lower() in lowered and claim.lower() not in template_lowered:
-                    return template_reply, fallback_metrics
+                    return template_reply, fallback_metrics, None
             return text, {
                 "llmMs": res.get("latency_ms", 0.0),
                 "ttftMs": res.get("latency_ms", 0.0),
                 "tokensIn": res.get("tokens_in", 0),
                 "tokensOut": res.get("tokens_out", 0),
                 "model": res.get("model", f"{provider}:unknown"),
-            }
+            }, res.get("x_voiceai")
         except Exception as e:
             print(f"[GeneralizedAgent] LLM phrasing skipped ({provider}): {e}")
-            return template_reply, fallback_metrics
+            return template_reply, fallback_metrics, None
 
     # ─── Screening ────────────────────────────────────────────────────────────
 

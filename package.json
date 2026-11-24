@@ -13,11 +13,19 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "start": "python scripts/start_all.py --mode all",
     "start:agent": "python scripts/start_all.py --mode agent",
     "start:translator": "python scripts/start_all.py --mode translator",
     "start:all": "python scripts/start_all.py --mode all",
     "dev:docker": "docker compose up --build",
-    "eval:sweep": "python eval/runner.py --sweep eval/configs/streaming_ablation.yaml"
+    "eval:sweep": "python eval/runner.py --sweep eval/configs/streaming_ablation.yaml",
+    "bench:latency": "python eval/inference/latency/benchmark.py",
+    "bench:endpointing": "python eval/inference/endpointing/benchmark.py",
+    "bench:asr": "python eval/inference/asr/benchmark.py",
+    "bench:llm": "python eval/inference/llm/benchmark.py",
+    "bench:routing": "python eval/inference/routing/benchmark.py",
+    "bench:index": "python scripts/generate_benchmarks_index.py",
+    "bench:all": "npm run bench:latency && npm run bench:endpointing && npm run bench:asr && npm run bench:llm && npm run bench:routing && npm run bench:index"
   },
   "devDependencies": {
     "turbo": "^1.12.5",

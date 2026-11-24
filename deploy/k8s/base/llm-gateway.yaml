@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-gateway-deployment
+  namespace: voiceai
+  labels:
+    app: voice-llm-gateway
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: voice-llm-gateway
+  template:
+    metadata:
+      labels:
+        app: voice-llm-gateway
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: llm-gateway
+          image: voiceai/llm-gateway:latest
+          ports:
+            - containerPort: 8005
+          env:
+            - name: LLM_GATEWAY_HOST
+              value: "0.0.0.0"
+            - name: LLM_GATEWAY_PORT
+              value: "8005"
+            - name: LLM_GATEWAY_PROFILE
+              value: "default"
+            - name: LLM_BACKEND_DEFAULT
+              value: "stub"
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "1Gi"
+            limits:
+              cpu: "4000m"
+              memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8005
+            initialDelaySeconds: 5
+            periodSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8005
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-gateway-service
+  namespace: voiceai
+spec:
+  selector:
+    app: voice-llm-gateway
+  ports:
+    - port: 8005
+      targetPort: 8005

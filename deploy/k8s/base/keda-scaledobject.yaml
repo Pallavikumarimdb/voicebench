@@ -1,0 +1,83 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: gateway-autoscaler
+  namespace: voiceai
+  labels:
+    app: voice-gateway
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gateway-deployment
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  cooldownPeriod: 300
+  pollingInterval: 15
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+            - type: Pods
+              value: 4
+              periodSeconds: 15
+          selectPolicy: Max
+        scaleDown:
+          # Plan 1 P6-T3 / P6-T4: Slow scale-in stabilization to prevent flapping
+          # and give active draining sessions plenty of time to wind down
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 10
+              periodSeconds: 60
+          selectPolicy: Min
+  triggers:
+    # 1. Primary Voice Metric: Active Concurrent Voice Sessions per Pod
+    # Target: 4 concurrent voice sessions per pod (determined in P5-T4 pod capacity benchmarking)
+    # Scaling on token queue depth for live audio causes dropouts; session concurrency is primary.
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+        metricName: voiceai_active_sessions_per_pod
+        query: sum(voiceai_active_sessions{namespace="voiceai"}) / count(kube_pod_status_ready{namespace="voiceai", condition="true", pod=~"gateway-deployment-.*"})
+        threshold: "4"
+
+    # 2. Latency Guard Trigger: Time-to-First-Audio (TTFA) p95 threshold (1000ms SLA guard)
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+        metricName: voiceai_ttfa_seconds_p95
+        query: histogram_quantile(0.95, sum(rate(voiceai_turn_seconds_bucket{namespace="voiceai"}[2m])) by (le))
+        threshold: "1.0"
+---
+# Separate ScaledObject for Batch Processing (e.g. batch_extraction_example, call analytics)
+# Here token queue depth / pending job queue IS appropriate, unlike live voice streaming.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: batch-processor-autoscaler
+  namespace: voiceai
+  labels:
+    app: voice-batch-processor
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agent-deployment
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  cooldownPeriod: 120
+  pollingInterval: 15
+  triggers:
+    # Batch extraction scaling on pending token / job backlog queue depth
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+        metricName: voiceai_batch_pending_tasks
+        query: sum(voiceai_batch_queue_depth{namespace="voiceai"})
+        threshold: "50"

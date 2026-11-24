@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 360" width="750" height="360">
+  <style>
+    .title { font-family: -apple-system, sans-serif; font-size: 18px; font-weight: bold; fill: #2C3E50; }
+    .subtitle { font-family: -apple-system, sans-serif; font-size: 12px; fill: #7F8C8D; }
+    .label { font-family: -apple-system, sans-serif; font-size: 12px; font-weight: 500; fill: #34495E; text-anchor: end; }
+    .val { font-family: -apple-system, sans-serif; font-size: 11px; font-weight: bold; fill: #2C3E50; }
+  </style>
+  <rect width="750" height="360" fill="#FFFFFF" rx="8" />
+  <text x="30" y="38" class="title">ASR Engine Latency & RTF Comparison (B3)</text>
+  <text x="30" y="58" class="subtitle">Evaluated on real audio turns on CPU (int8, 4 threads). Budget: &lt; 200 ms.</text>
+  <text x="225" y="110" class="label">NVIDIA Parakeet-CTC (EN)</text>
+  <rect x="240" y="95" width="17" height="22" rx="4" fill="#2ECC71" />
+  <text x="267" y="111" class="val">58.0 ms (RTF 0.023) — PASSED</text>
+  <text x="225" y="165" class="label">SenseVoice-Small (JA)</text>
+  <rect x="240" y="150" width="53" height="22" rx="4" fill="#3498DB" />
+  <text x="303" y="166" class="val">178.0 ms (RTF 0.055) — PASSED</text>
+  <text x="225" y="220" class="label">Faster-Whisper small (JA)</text>
+  <rect x="240" y="205" width="420" height="22" rx="4" fill="#E74C3C" />
+  <text x="670" y="221" class="val">3793.3 ms (RTF 2.529) — FAILED (CPU)</text>
+  <text x="225" y="275" class="label">Faster-Whisper (GPU CUDA)</text>
+  <rect x="240" y="260" width="20" height="22" rx="4" fill="#95A5A6" stroke="#7F8C8D" stroke-dasharray="2,2" />
+  <text x="270" y="276" class="val" style="fill: #7F8C8D;">Not Run (No GPU on host)</text>
+  <line x1="300" y1="80" x2="300" y2="300" stroke="#E67E22" stroke-width="2" stroke-dasharray="4,4" />
+  <text x="300" y="320" text-anchor="middle" style="font-family: sans-serif; font-size: 11px; font-weight: bold; fill: #E67E22;">200 ms Voice Budget</text>
+</svg>

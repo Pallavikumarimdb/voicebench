@@ -1,0 +1,696 @@
+"""
+OpenAI-compatible POST /v1/chat/completions endpoint with cancellation support.
+Supports non-streaming and Server-Sent Events (SSE) streaming with Section 5.2 routing records,
+delegating to backend adapters with cancellation propagation and automated fallback.
+"""
+
+import time
+import json
+import uuid
+import httpx
+import hashlib
+import asyncio
+from typing import List, Dict, Any, Optional, AsyncGenerator
+from fastapi import APIRouter, Request, Header, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
+
+from ..config import config
+from ..logging import logger, trace_context
+from ..adapters import (
+    registry,
+    AdapterRequest,
+    AdapterResponse,
+    AdapterChunk,
+    BackendError5xx,
+    BackendTimeoutError,
+    BackendStreamDropError
+)
+from ..metrics import (
+    voiceai_llm_requests_total,
+    voiceai_llm_ttft_seconds,
+    voiceai_fallback_total,
+    voiceai_schema_retry_total,
+    voiceai_cache_total
+)
+from ..cancellation import cancellation_manager, ActiveRequest
+from ..cache.response_cache import response_cache
+
+router = APIRouter()
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletionRequest(BaseModel):
+    model: str = "qwen3:1.7b"
+    messages: List[ChatMessage]
+    stream: bool = False
+    temperature: Optional[float] = 0.7
+    max_tokens: Optional[int] = 256
+    top_p: Optional[float] = 1.0
+    backend: Optional[str] = None  # explicit override for tests / routing
+    response_format: Optional[Dict[str, Any]] = None
+    json_schema: Optional[Dict[str, Any]] = None
+
+
+from ..router.engine import RoutingInput, RoutingDecision, evaluate_routing_rule
+from ..router.breaker import circuit_breaker_registry
+
+
+class CancelRequest(BaseModel):
+    completion_id: Optional[str] = None
+    session_id: Optional[str] = None
+    turn_id: Optional[str] = None
+
+
+def resolve_backend(
+    req: ChatCompletionRequest,
+    profile: str,
+    risk_tier: str,
+    dialogue_state: Optional[str] = None,
+    asr_confidence: Optional[float] = None,
+    utterance_tokens: int = 0
+) -> RoutingDecision:
+    """Resolves routing decision using the pure rule engine (P2-T1)."""
+    policy = config.get_policy(profile)
+    open_tiers = circuit_breaker_registry.get_open_tiers()
+    r_input = RoutingInput(
+        profile=profile,
+        dialogue_state=dialogue_state,
+        risk_tier=risk_tier,
+        asr_confidence=asr_confidence,
+        utterance_tokens=utterance_tokens,
+        circuit_open_tiers=open_tiers
+    )
+    decision = evaluate_routing_rule(policy, r_input)
+
+    # Respect explicit overrides for testing
+    if req.backend:
+        decision.backend = req.backend
+    elif req.model == "stub-model" or req.model.startswith("stub"):
+        decision.backend = "stub"
+        decision.model = "stub"
+
+    return decision
+
+
+def create_decision_record(
+    model: str,
+    tier: str,
+    backend: str,
+    profile: str,
+    risk_tier: str,
+    ttft_ms: float = 0.0,
+    tokens_in: int = 0,
+    tokens_out: int = 0,
+    cached_tokens: int = 0,
+    cancelled: bool = False,
+    fallback_chain: Optional[List[Dict[str, str]]] = None,
+    rule_id: Optional[str] = None,
+    reason_code: Optional[str] = None,
+    constraint_mode: Optional[str] = None,
+    cache: str = "miss"
+) -> Dict[str, Any]:
+    """Generates the Section 5.2 x_voiceai decision record."""
+    policy_ver = config.get_policy_version(profile)
+    matched_rule = rule_id or ("r_high_risk" if risk_tier == "high" else "r_default")
+    if cancelled:
+        matched_reason = "CLIENT_CANCELLED"
+    elif reason_code and reason_code not in ("RULE_MATCH", "DEFAULT"):
+        matched_reason = reason_code
+    elif fallback_chain:
+        matched_reason = fallback_chain[-1].get("reason", "BACKEND_ERROR")
+    else:
+        matched_reason = reason_code or "RULE_MATCH"
+    matched_constraint = constraint_mode or ("strict" if risk_tier == "high" else "none")
+
+    return {
+        "tier": tier,
+        "backend": backend,
+        "model": model,
+        "rule_id": matched_rule,
+        "reason_code": matched_reason,
+        "policy_version": policy_ver,
+        "cache": cache,
+        "constraint_mode": matched_constraint,
+        "fallback_chain": fallback_chain or [],
+        "ttft_ms": max(0, int(ttft_ms)),
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "cached_tokens": cached_tokens,
+        "cancelled": cancelled
+    }
+
+
+async def stream_chat_generator(
+    http_request: Request,
+    req: ChatCompletionRequest,
+    tier_name: str,
+    backend_name: str,
+    session_id: str,
+    turn_id: str,
+    profile: str,
+    risk_tier: str,
+    rule_id: str = "r_default",
+    reason_code: str = "RULE_MATCH",
+    constraint_mode: str = "none"
+) -> AsyncGenerator[str, None]:
+    start_time = time.monotonic()
+    completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
+    created_ts = int(time.time())
+
+    active_req = cancellation_manager.register(
+        completion_id=completion_id,
+        session_id=session_id,
+        turn_id=turn_id,
+        model=req.model,
+        tier=tier_name,
+        backend=backend_name
+    )
+
+    target_schema = req.json_schema
+    if not target_schema and req.response_format and req.response_format.get("type") == "json_schema":
+        target_schema = req.response_format.get("json_schema", {}).get("schema")
+
+    adapter = registry.get(backend_name)
+    adapter_req = AdapterRequest(
+        model=req.model,
+        messages=[{"role": m.role, "content": m.content} for m in req.messages],
+        temperature=req.temperature or 0.7,
+        max_tokens=req.max_tokens or 256,
+        stream=True,
+        json_schema=target_schema
+    )
+
+    fallback_chain: List[Dict[str, str]] = []
+    first_token = True
+    ttft_ms = 0.0
+    total_tokens_in = sum(len(m.content) for m in req.messages)
+    total_tokens_out = 0
+    cached_tokens = 0
+    cancelled = False
+
+    in_thinking = False
+
+    async def _run_stream(target_adapter, target_backend: str):
+        nonlocal first_token, ttft_ms, total_tokens_in, total_tokens_out, cached_tokens, cancelled, in_thinking
+        async for chunk in target_adapter.stream(adapter_req):
+            # Check for client disconnect or explicit cancellation
+            if active_req.cancel_event.is_set() or active_req.cancelled:
+                cancelled = True
+                break
+            if await http_request.is_disconnected():
+                cancellation_manager.cancel(completion_id=completion_id)
+                cancelled = True
+                break
+
+            if chunk.tokens_in is not None:
+                total_tokens_in = chunk.tokens_in
+            if chunk.tokens_out is not None:
+                total_tokens_out = chunk.tokens_out
+            if chunk.cached_tokens is not None:
+                cached_tokens = chunk.cached_tokens
+
+            delta = chunk.delta_content
+            if delta:
+                # Plan 1 P1-T6: Suppress Qwen reasoning (<think>) tokens on the voice path
+                if "<think>" in delta:
+                    in_thinking = True
+                    delta = delta.split("<think>", 1)[0]
+                if in_thinking:
+                    if "</think>" in delta:
+                        in_thinking = False
+                        delta = delta.split("</think>", 1)[1]
+                    else:
+                        delta = ""
+
+                if delta:
+                    if first_token:
+                        ttft_s = time.monotonic() - start_time
+                        ttft_ms = ttft_s * 1000.0
+                        voiceai_llm_ttft_seconds.observe(ttft_s)
+                        first_token = False
+
+                    out_chunk = {
+                        "id": completion_id,
+                        "object": "chat.completion.chunk",
+                        "created": created_ts,
+                        "model": req.model,
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"content": delta},
+                                "finish_reason": None
+                            }
+                        ]
+                    }
+                    yield f"data: {json.dumps(out_chunk, ensure_ascii=False)}\n\n"
+
+    try:
+        try:
+            async for item in _run_stream(adapter, backend_name):
+                yield item
+                if cancelled:
+                    break
+            if not cancelled:
+                circuit_breaker_registry.record_success(backend_name)
+        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError, ConnectionResetError, OSError) as net_err:
+            if first_token and not cancelled:
+                circuit_breaker_registry.record_failure(backend_name)
+                fallback_reason = "TTFT_BUDGET_EXCEEDED" if isinstance(net_err, (TimeoutError, asyncio.TimeoutError, BackendTimeoutError)) or "ttft" in str(net_err).lower() else "BACKEND_ERROR"
+                logger.warning(
+                    f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub' with reason {fallback_reason}"
+                )
+                voiceai_fallback_total.labels(
+                    from_tier=tier_name,
+                    to_tier="stub",
+                    reason=fallback_reason
+                ).inc()
+                fallback_chain.append({"from": backend_name, "to": "stub", "reason": fallback_reason})
+                backend_name = "stub"
+                adapter = registry.get("stub")
+                try:
+                    async for item in _run_stream(adapter, backend_name):
+                        yield item
+                        if cancelled:
+                            break
+                    if not cancelled:
+                        circuit_breaker_registry.record_success(backend_name)
+                except Exception as stream_err:
+                    circuit_breaker_registry.record_failure(backend_name)
+                    yield f"event: error\ndata: {json.dumps({'error': 'All backends failed', 'reason_code': 'ALL_BACKENDS_FAILED'})}\n\n"
+                    return
+            else:
+                circuit_breaker_registry.record_failure(backend_name)
+                raise
+
+        # Final chunk carrying Section 5.2 decision record
+        is_cancelled = cancelled or active_req.cancelled or active_req.cancel_event.is_set()
+        decision = create_decision_record(
+            model=req.model,
+            tier=tier_name,
+            backend=backend_name,
+            profile=profile,
+            risk_tier=risk_tier,
+            ttft_ms=ttft_ms,
+            tokens_in=total_tokens_in,
+            tokens_out=total_tokens_out,
+            cached_tokens=cached_tokens,
+            cancelled=is_cancelled,
+            fallback_chain=fallback_chain,
+            rule_id=rule_id,
+            reason_code=reason_code,
+            constraint_mode=constraint_mode
+        )
+        final_chunk = {
+            "id": completion_id,
+            "object": "chat.completion.chunk",
+            "created": created_ts,
+            "model": req.model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {},
+                    "finish_reason": "stop" if not cancelled else "abort"
+                }
+            ],
+            "usage": {
+                "prompt_tokens": total_tokens_in,
+                "completion_tokens": total_tokens_out,
+                "total_tokens": total_tokens_in + total_tokens_out,
+                "prompt_tokens_details": {"cached_tokens": cached_tokens}
+            },
+            "x_voiceai": decision
+        }
+        yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
+
+        if not cancelled:
+            voiceai_llm_requests_total.labels(
+                backend=backend_name,
+                model=req.model,
+                tier=tier_name,
+                status="success"
+            ).inc()
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        logger.error(f"Stream generation error ({type(exc).__name__}): {exc}")
+        voiceai_llm_requests_total.labels(
+            backend=backend_name,
+            model=req.model,
+            tier=tier_name,
+            status="error"
+        ).inc()
+        raise
+    finally:
+        cancellation_manager.unregister(completion_id)
+
+
+@router.post("/chat/completions")
+async def chat_completions(
+    http_request: Request,
+    req: ChatCompletionRequest,
+    x_voiceai_session_id: Optional[str] = Header(None),
+    x_voiceai_turn_id: Optional[str] = Header(None),
+    x_voiceai_profile: Optional[str] = Header(None),
+    x_voiceai_dialogue_state: Optional[str] = Header(None),
+    x_voiceai_risk_tier: Optional[str] = Header("low"),
+    x_voiceai_asr_confidence: Optional[str] = Header(None),
+    x_voiceai_utterance_tokens: Optional[str] = Header(None),
+    x_voiceai_tenant_id: Optional[str] = Header("default_tenant"),
+    x_voiceai_persona_id: Optional[str] = Header(None),
+):
+    session_id = x_voiceai_session_id or "sess_default"
+    turn_id = x_voiceai_turn_id or "turn_0"
+    profile = x_voiceai_profile or config.default_profile
+    risk_tier = x_voiceai_risk_tier or "low"
+    tenant_id = x_voiceai_tenant_id or "default_tenant"
+    persona_id = x_voiceai_persona_id or profile
+    state_id = x_voiceai_dialogue_state or "default_state"
+
+    trace_context.set({
+        "trace_id": str(uuid.uuid4())[:8],
+        "session_id": session_id,
+        "turn_id": turn_id
+    })
+
+    # Plan 1 P4-T4: Exact-hash response cache check
+    state_mutated = response_cache.check_session_state(session_id, state_id)
+    prompt_text = ""
+    for m in reversed(req.messages):
+        if m.role == "user":
+            prompt_text = m.content
+            break
+    history_messages = [m.model_dump() if hasattr(m, 'model_dump') else {"role": m.role, "content": m.content} for m in req.messages[:-1]]
+    history_hash = response_cache.compute_history_hash(history_messages)
+    schema_hash = hashlib.sha256(json.dumps(req.json_schema or req.response_format or {}, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+    cache_key = response_cache.compute_key(tenant_id, persona_id, state_id, prompt_text, history_hash, schema_hash)
+
+    # Cache lookup (bypassed if streaming, state mutated, or explicit backend override provided for tests)
+    if not req.stream and not state_mutated and not req.backend:
+        cached_entry = response_cache.get(cache_key)
+        if cached_entry:
+            cached_resp = json.loads(json.dumps(cached_entry))
+            cached_resp["id"] = f"chatcmpl-cache-{uuid.uuid4().hex[:8]}"
+            cached_resp["created"] = int(time.time())
+            cached_resp["x_voiceai"]["cache"] = "hit"
+            cached_resp["x_voiceai"]["reason_code"] = "CACHE_HIT"
+            cached_resp["x_voiceai"]["tier"] = "t0_cache"
+            cached_resp["x_voiceai"]["ttft_ms"] = 1
+            if "usage" in cached_resp:
+                cached_resp["usage"].setdefault("prompt_tokens_details", {})["cached_tokens"] = cached_resp["usage"].get("prompt_tokens", 0)
+            voiceai_cache_total.labels(kind="response", result="hit").inc()
+            voiceai_llm_requests_total.labels(
+                backend="cache",
+                model=req.model,
+                tier="t0_cache",
+                status="success"
+            ).inc()
+            return JSONResponse(content=cached_resp)
+        else:
+            voiceai_cache_total.labels(kind="response", result="miss").inc()
+
+    u_tokens = int(x_voiceai_utterance_tokens) if x_voiceai_utterance_tokens and x_voiceai_utterance_tokens.isdigit() else 0
+    asr_conf = float(x_voiceai_asr_confidence) if x_voiceai_asr_confidence else None
+
+    routing_dec = resolve_backend(
+        req, profile, risk_tier,
+        dialogue_state=x_voiceai_dialogue_state,
+        asr_confidence=asr_conf,
+        utterance_tokens=u_tokens
+    )
+    tier_name = routing_dec.tier
+    backend_name = routing_dec.backend
+    rule_id = routing_dec.rule_id
+    reason_code = routing_dec.reason_code
+    constraint_mode = routing_dec.constraint_mode
+
+    logger.info(
+        f"Incoming chat completion: model={req.model}, stream={req.stream}, "
+        f"tier={tier_name}, backend={backend_name}, risk_tier={risk_tier}, rule={rule_id}"
+    )
+
+    if routing_dec.tier == "t3_safe_mode" or routing_dec.reason_code == "ALL_BACKENDS_FAILED":
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "All backends failed", "reason_code": "ALL_BACKENDS_FAILED"}
+        )
+
+    if req.stream:
+        return StreamingResponse(
+            stream_chat_generator(
+                http_request, req, tier_name, backend_name,
+                session_id, turn_id, profile, risk_tier,
+                rule_id=rule_id, reason_code=reason_code, constraint_mode=constraint_mode
+            ),
+            media_type="text/event-stream"
+        )
+
+    # Non-streaming execution via adapter with fallback
+    completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
+    active_req = cancellation_manager.register(
+        completion_id=completion_id,
+        session_id=session_id,
+        turn_id=turn_id,
+        model=req.model,
+        tier=tier_name,
+        backend=backend_name
+    )
+
+    target_schema = req.json_schema
+    if not target_schema and req.response_format and req.response_format.get("type") == "json_schema":
+        target_schema = req.response_format.get("json_schema", {}).get("schema")
+
+    adapter = registry.get(backend_name)
+    adapter_req = AdapterRequest(
+        model=req.model,
+        messages=[{"role": m.role, "content": m.content} for m in req.messages],
+        temperature=req.temperature or 0.7,
+        max_tokens=req.max_tokens or 256,
+        stream=False,
+        json_schema=target_schema
+    )
+
+    fallback_chain: List[Dict[str, str]] = []
+
+    try:
+        try:
+            policy = config.get_policy(profile)
+            ttft_budget_ms = policy.get("budgets", {}).get("ttft_ms", 450.0)
+            adapter_res = await adapter.complete(adapter_req)
+            if adapter_res.ttft_ms > ttft_budget_ms and backend_name != "stub":
+                raise BackendTimeoutError(f"TTFT {adapter_res.ttft_ms}ms exceeded budget {ttft_budget_ms}ms")
+            circuit_breaker_registry.record_success(backend_name)
+        except (httpx.ConnectError, httpx.RequestError, RuntimeError, TimeoutError, ConnectionResetError, OSError) as net_err:
+            circuit_breaker_registry.record_failure(backend_name)
+            if backend_name == "stub":
+                raise
+            fallback_reason = "TTFT_BUDGET_EXCEEDED" if isinstance(net_err, (TimeoutError, asyncio.TimeoutError, BackendTimeoutError)) or "ttft" in str(net_err).lower() else "BACKEND_ERROR"
+            logger.warning(
+                f"Backend '{backend_name}' connection failed ({net_err}), falling back to 'stub' with reason {fallback_reason}"
+            )
+            voiceai_fallback_total.labels(
+                from_tier=tier_name,
+                to_tier="stub",
+                reason=fallback_reason
+            ).inc()
+            fallback_chain.append({"from": backend_name, "to": "stub", "reason": fallback_reason})
+            backend_name = "stub"
+            adapter = registry.get("stub")
+            try:
+                adapter_res = await adapter.complete(adapter_req)
+                circuit_breaker_registry.record_success(backend_name)
+            except Exception as stub_err:
+                circuit_breaker_registry.record_failure(backend_name)
+                raise HTTPException(
+                    status_code=503,
+                    detail={"error": f"All backends failed: {stub_err}", "reason_code": "ALL_BACKENDS_FAILED"}
+                )
+
+        from ..adapters.base import strip_thinking_tokens
+        adapter_res.content = strip_thinking_tokens(adapter_res.content)
+
+        # Plan 1 Section 6 P3-T4: Unsupported-backend path (validate output, retry once with corrective prompt, fall back per policy)
+        if target_schema:
+            is_valid_json = False
+            try:
+                parsed_json = json.loads(adapter_res.content)
+                required_fields = target_schema.get("required", [])
+                if all(f in parsed_json for f in required_fields):
+                    is_valid_json = True
+            except Exception:
+                is_valid_json = False
+
+            if not is_valid_json:
+                voiceai_schema_retry_total.labels(backend=backend_name, model=req.model).inc()
+                logger.warning(f"Backend '{backend_name}' output failed schema validation. Retrying once with corrective prompt.")
+                req_fields = ", ".join(target_schema.get("required", ["intent", "next_state", "utterance"]))
+                corrective_messages = list(adapter_req.messages) + [
+                    {"role": "assistant", "content": adapter_res.content},
+                    {
+                        "role": "user",
+                        "content": f"Your previous response was not valid JSON conforming to the schema. Output ONLY a valid JSON object with keys: {req_fields}. Do not include markdown or explanations."
+                    }
+                ]
+                retry_req = AdapterRequest(
+                    model=adapter_req.model,
+                    messages=corrective_messages,
+                    temperature=0.1,
+                    max_tokens=adapter_req.max_tokens,
+                    stream=False,
+                    json_schema=target_schema
+                )
+                try:
+                    retry_res = await adapter.complete(retry_req)
+                    retry_res.content = strip_thinking_tokens(retry_res.content)
+                    retry_parsed = json.loads(retry_res.content)
+                    if all(f in retry_parsed for f in target_schema.get("required", [])):
+                        adapter_res = retry_res
+                        reason_code = "SCHEMA_RETRY"
+                    else:
+                        raise ValueError("Retry output still does not satisfy schema requirements")
+                except Exception as retry_err:
+                    logger.warning(f"Schema retry failed on '{backend_name}' ({retry_err}). Falling back per policy.")
+                    voiceai_fallback_total.labels(
+                        from_tier=tier_name,
+                        to_tier="stub",
+                        reason="SCHEMA_RETRY"
+                    ).inc()
+                    fallback_chain.append({"from": backend_name, "to": "stub", "reason": "SCHEMA_RETRY"})
+                    backend_name = "stub"
+                    adapter = registry.get("stub")
+                    adapter_res = await adapter.complete(adapter_req)
+                    adapter_res.content = strip_thinking_tokens(adapter_res.content)
+                    reason_code = "SCHEMA_RETRY"
+
+        voiceai_llm_ttft_seconds.observe(adapter_res.ttft_ms / 1000.0)
+        created_ts = int(time.time())
+
+        decision = create_decision_record(
+            model=req.model,
+            tier=tier_name,
+            backend=backend_name,
+            profile=profile,
+            risk_tier=risk_tier,
+            ttft_ms=adapter_res.ttft_ms,
+            tokens_in=adapter_res.tokens_in,
+            tokens_out=adapter_res.tokens_out,
+            cached_tokens=adapter_res.cached_tokens,
+            cancelled=active_req.cancelled,
+            fallback_chain=fallback_chain,
+            rule_id=rule_id,
+            reason_code=reason_code,
+            constraint_mode=constraint_mode
+        )
+
+        response_body = {
+            "id": completion_id,
+            "object": "chat.completion",
+            "created": created_ts,
+            "model": req.model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": adapter_res.content
+                    },
+                    "finish_reason": adapter_res.finish_reason
+                }
+            ],
+            "usage": {
+                "prompt_tokens": adapter_res.tokens_in,
+                "completion_tokens": adapter_res.tokens_out,
+                "total_tokens": adapter_res.tokens_in + adapter_res.tokens_out,
+                "prompt_tokens_details": {"cached_tokens": adapter_res.cached_tokens}
+            },
+            "x_voiceai": decision
+        }
+
+        # Plan 1 P4-T4: Cache response for identical repeat request
+        if not req.stream and adapter_res.content:
+            response_cache.set(cache_key, response_body, tenant_id, persona_id, state_id)
+
+        voiceai_llm_requests_total.labels(
+            backend=backend_name,
+            model=req.model,
+            tier=tier_name,
+            status="success"
+        ).inc()
+
+        return JSONResponse(content=response_body)
+
+    except BackendTimeoutError as exc:
+        logger.error(f"Backend timeout: {exc}")
+        voiceai_llm_requests_total.labels(
+            backend=backend_name,
+            model=req.model,
+            tier=tier_name,
+            status="timeout"
+        ).inc()
+        raise HTTPException(status_code=504, detail="Upstream backend timeout")
+
+    except BackendError5xx as exc:
+        logger.error(f"Backend 5xx error: {exc}")
+        voiceai_llm_requests_total.labels(
+            backend=backend_name,
+            model=req.model,
+            tier=tier_name,
+            status="5xx"
+        ).inc()
+        raise HTTPException(status_code=502, detail="Upstream backend internal error")
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        logger.error(f"Completion failed ({type(exc).__name__}): {exc}")
+        voiceai_llm_requests_total.labels(
+            backend=backend_name,
+            model=req.model,
+            tier=tier_name,
+            status="error"
+        ).inc()
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        cancellation_manager.unregister(completion_id)
+
+
+@router.post("/chat/completions/{completion_id}/cancel")
+async def cancel_completion(completion_id: str):
+    """Explicitly cancels an in-flight completion request by ID."""
+    active = cancellation_manager.cancel(completion_id=completion_id)
+    if not active:
+        return {"status": "not_found", "cancelled": False, "completion_id": completion_id}
+    return {
+        "status": "cancelled",
+        "cancelled": True,
+        "completion_id": completion_id,
+        "cancel_latency_ms": active.cancel_latency_ms
+    }
+
+
+@router.post("/cancel")
+async def cancel_turn(body: CancelRequest):
+    """Explicitly cancels an in-flight completion by session_id, turn_id, or completion_id."""
+    active = cancellation_manager.cancel(
+        completion_id=body.completion_id,
+        session_id=body.session_id,
+        turn_id=body.turn_id
+    )
+    if not active:
+        return {"status": "not_found", "cancelled": False}
+    return {
+        "status": "cancelled",
+        "cancelled": True,
+        "completion_id": active.completion_id,
+        "session_id": active.session_id,
+        "turn_id": active.turn_id,
+        "cancel_latency_ms": active.cancel_latency_ms
+    }

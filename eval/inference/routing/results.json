@@ -1,0 +1,89 @@
+{
+  "benchmark": "P5-T5 B5 Routing Ablation Benchmark",
+  "metadata": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+    "cores_physical": 10,
+    "cores_logical": 12,
+    "ram_gb": 31.7,
+    "python": "3.13.8",
+    "git_sha": "10b369e8",
+    "seed": 42,
+    "timestamp": "2026-11-24 12:13:21"
+  },
+  "sample_size_per_mode": 100,
+  "results": {
+    "always_t1": {
+      "mode": "always_t1",
+      "total_calls": 100,
+      "total_turns": 500,
+      "ttft_p50_ms": 32.6,
+      "ttft_p95_ms": 39.45,
+      "ttft_mean_ms": 32.57,
+      "ttft_bootstrap_ci": [
+        32.22,
+        32.92
+      ],
+      "hard_fails": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci": [
+        0.0,
+        3.7
+      ],
+      "mean_judge_score": 4.82,
+      "judge_score_ci": [
+        4.8,
+        4.84
+      ],
+      "relative_cost_units": 1.0
+    },
+    "always_t2": {
+      "mode": "always_t2",
+      "total_calls": 100,
+      "total_turns": 500,
+      "ttft_p50_ms": 280.61,
+      "ttft_p95_ms": 341.99,
+      "ttft_mean_ms": 281.8,
+      "ttft_bootstrap_ci": [
+        278.61,
+        285.03
+      ],
+      "hard_fails": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci": [
+        0.0,
+        3.7
+      ],
+      "mean_judge_score": 4.9,
+      "judge_score_ci": [
+        4.89,
+        4.91
+      ],
+      "relative_cost_units": 14.5
+    },
+    "policy_router": {
+      "mode": "policy_router",
+      "total_calls": 100,
+      "total_turns": 500,
+      "ttft_p50_ms": 32.12,
+      "ttft_p95_ms": 303.97,
+      "ttft_mean_ms": 71.31,
+      "ttft_bootstrap_ci": [
+        62.65,
+        79.85
+      ],
+      "hard_fails": 0,
+      "hard_fail_rate_pct": 0.0,
+      "hard_fail_wilson_ci": [
+        0.0,
+        3.7
+      ],
+      "mean_judge_score": 4.89,
+      "judge_score_ci": [
+        4.88,
+        4.9
+      ],
+      "relative_cost_units": 3.23
+    }
+  }
+}

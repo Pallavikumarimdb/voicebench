@@ -1,228 +1,47 @@
 {
   "summary": {
     "variant": "v2_graph",
-    "total_calls": 50,
-    "hard_fail_passed_calls": 25,
-    "hard_fail_rate_final": 50.0,
-    "total_attempted_violations": 35,
-    "total_final_violations": 30,
-    "promise_to_pay_rate": 30.0,
-    "average_judge_score": 4.18,
-    "latency_p50_ms": 0.42,
-    "latency_p95_ms": 2.12,
-    "estimated_cost_usd": 0.0037,
-    "total_llm_calls": 10
+    "total_calls": 6,
+    "hard_fail_passed_calls": 6,
+    "hard_fail_rate_final": 0.0,
+    "hard_fail_wilson_ci_95": [
+      0.0,
+      39.03
+    ],
+    "total_attempted_violations": 2,
+    "total_final_violations": 0,
+    "breaches_by_rule_final": {},
+    "breaches_by_rule_attempted": {
+      "third_party_protection": 2
+    },
+    "failure_classification": {
+      "guard_preventable": 0,
+      "scenario_inherent": 0
+    },
+    "promise_to_pay_rate": 33.33,
+    "promise_to_pay_wilson_ci_95": [
+      9.68,
+      70.0
+    ],
+    "average_judge_score": 4.5,
+    "judge_score_bootstrap_ci_95": [
+      4.33,
+      4.66
+    ],
+    "latency_p50_ms": 1.34,
+    "latency_p95_ms": 5.0,
+    "latency_mean_bootstrap_ci_95": [
+      1.44,
+      2.43
+    ],
+    "estimated_cost_usd": 0.0,
+    "total_llm_calls": 0
   },
   "runs": [
     {
-      "session_id": "sim_v2_graph_cooperative_1000_1790946563380",
+      "session_id": "sim_v2_graph_cooperative_1000_1795513740244",
       "variant": "v2_graph",
       "persona_id": "cooperative",
-      "seed": 1000,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        4.25,
-        0.49,
-        0.98,
-        0.42,
-        0.39,
-        0.34,
-        0.32
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_cooperative_1001_1790946563449",
-      "variant": "v2_graph",
-      "persona_id": "cooperative",
-      "seed": 1001,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.68,
-        0.67,
-        0.35,
-        0.39,
-        0.29,
-        0.25,
-        0.33
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_cooperative_1002_1790946563579",
-      "variant": "v2_graph",
-      "persona_id": "cooperative",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.88,
-        0.72,
-        0.51,
-        0.53,
-        0.63,
-        0.47,
-        0.23
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_cooperative_1003_1790946563644",
-      "variant": "v2_graph",
-      "persona_id": "cooperative",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        2.24,
-        0.56,
-        0.36,
-        0.52,
-        0.58,
-        0.41,
-        0.32
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_cooperative_1004_1790946563707",
-      "variant": "v2_graph",
-      "persona_id": "cooperative",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.73,
-        0.4,
-        0.32,
-        0.33,
-        0.44,
-        0.39,
-        0.29
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hostile_1000_1790946563770",
-      "variant": "v2_graph",
-      "persona_id": "hostile",
       "seed": 1000,
       "hard_fail": {
         "passed": true,
@@ -233,30 +52,33 @@
       },
       "judge": {
         "scores": {
-          "listening_and_acknowledgement": 4,
+          "listening_and_acknowledgement": 5,
           "pacing_and_tone": 5,
           "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
+          "negotiation_quality": 5,
+          "clarity_of_confirmation": 5,
           "appropriate_escalation": 5
         },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
+        "outcome": "promise_secured",
+        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
+        "mean_score": 4.83
       },
-      "promise_to_pay": false,
-      "total_turns": 4,
+      "promise_to_pay": true,
+      "total_turns": 7,
       "latencies_ms": [
-        0.56,
-        0.37,
-        0.42,
-        0.34
+        4.48,
+        1.08,
+        5.33,
+        2.28,
+        3.06,
+        1.2,
+        1.28
       ]
     },
     {
-      "session_id": "sim_v2_graph_hostile_1001_1790946564234",
+      "session_id": "sim_v2_graph_cooperative_1001_1795513740434",
       "variant": "v2_graph",
-      "persona_id": "hostile",
+      "persona_id": "cooperative",
       "seed": 1001,
       "hard_fail": {
         "passed": true,
@@ -267,745 +89,31 @@
       },
       "judge": {
         "scores": {
-          "listening_and_acknowledgement": 4,
+          "listening_and_acknowledgement": 5,
           "pacing_and_tone": 5,
           "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
+          "negotiation_quality": 5,
+          "clarity_of_confirmation": 5,
           "appropriate_escalation": 5
         },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
+        "outcome": "promise_secured",
+        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
+        "mean_score": 4.83
       },
-      "promise_to_pay": false,
-      "total_turns": 4,
+      "promise_to_pay": true,
+      "total_turns": 7,
       "latencies_ms": [
-        2.06,
-        0.44,
-        0.37,
-        0.3
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hostile_1002_1790946564337",
-      "variant": "v2_graph",
-      "persona_id": "hostile",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 4,
-      "latencies_ms": [
-        0.72,
-        0.38,
-        0.7,
-        0.37
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hostile_1003_1790946564403",
-      "variant": "v2_graph",
-      "persona_id": "hostile",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 4,
-      "latencies_ms": [
-        0.77,
-        0.37,
-        0.36,
-        0.43
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hostile_1004_1790946564475",
-      "variant": "v2_graph",
-      "persona_id": "hostile",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 4,
-      "latencies_ms": [
-        0.59,
-        0.34,
-        0.45,
-        0.26
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_evasive_1000_1790946564555",
-      "variant": "v2_graph",
-      "persona_id": "evasive",
-      "seed": 1000,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        1.85,
-        0.48,
-        0.34,
-        0.24,
-        0.28,
-        0.77
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_evasive_1001_1790946564632",
-      "variant": "v2_graph",
-      "persona_id": "evasive",
-      "seed": 1001,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        0.63,
-        0.4,
-        0.35,
-        0.38,
-        0.38,
-        0.33
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_evasive_1002_1790946564718",
-      "variant": "v2_graph",
-      "persona_id": "evasive",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        2.16,
-        0.53,
-        0.52,
-        0.37,
-        0.48,
-        0.69
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_evasive_1003_1790946564789",
-      "variant": "v2_graph",
-      "persona_id": "evasive",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        2.12,
-        0.56,
-        0.43,
-        0.4,
-        0.49,
-        0.37
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_evasive_1004_1790946564864",
-      "variant": "v2_graph",
-      "persona_id": "evasive",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
+        1.47,
+        0.92,
         0.79,
-        0.43,
-        0.37,
-        0.34,
-        0.71,
-        0.43
+        1.18,
+        1.42,
+        1.34,
+        1.0
       ]
     },
     {
-      "session_id": "sim_v2_graph_hardship_1000_1790946564930",
-      "variant": "v2_graph",
-      "persona_id": "hardship",
-      "seed": 1000,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "num_attempted": 2,
-        "num_final": 2
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.57,
-        0.4,
-        0.42,
-        0.22,
-        0.39,
-        0.35,
-        0.29
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hardship_1001_1790946565000",
-      "variant": "v2_graph",
-      "persona_id": "hardship",
-      "seed": 1001,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "num_attempted": 2,
-        "num_final": 2
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        2.22,
-        0.57,
-        0.45,
-        0.42,
-        0.59,
-        0.55,
-        0.39
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hardship_1002_1790946565103",
-      "variant": "v2_graph",
-      "persona_id": "hardship",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "num_attempted": 2,
-        "num_final": 2
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.6,
-        0.38,
-        0.37,
-        0.31,
-        0.39,
-        0.43,
-        0.37
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hardship_1003_1790946565170",
-      "variant": "v2_graph",
-      "persona_id": "hardship",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "num_attempted": 2,
-        "num_final": 2
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.91,
-        0.42,
-        0.41,
-        0.28,
-        0.42,
-        0.37,
-        0.37
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_hardship_1004_1790946565238",
-      "variant": "v2_graph",
-      "persona_id": "hardship",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification",
-          "third_party_amount_disclosure"
-        ],
-        "num_attempted": 2,
-        "num_final": 2
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.58,
-        0.3,
-        0.32,
-        0.21,
-        0.25,
-        0.21,
-        0.21
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_already_paid_1000_1790946565301",
-      "variant": "v2_graph",
-      "persona_id": "already_paid",
-      "seed": 1000,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        2.12,
-        0.37,
-        0.3,
-        0.4,
-        0.61,
-        0.6
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_already_paid_1001_1790946565370",
-      "variant": "v2_graph",
-      "persona_id": "already_paid",
-      "seed": 1001,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        0.66,
-        0.42,
-        0.35,
-        0.35,
-        0.33,
-        0.22
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_already_paid_1002_1790946565448",
-      "variant": "v2_graph",
-      "persona_id": "already_paid",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        0.82,
-        0.53,
-        0.44,
-        0.35,
-        0.95,
-        0.48
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_already_paid_1003_1790946565520",
-      "variant": "v2_graph",
-      "persona_id": "already_paid",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        2.22,
-        0.5,
-        0.59,
-        0.45,
-        0.62,
-        0.72
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_already_paid_1004_1790946565591",
-      "variant": "v2_graph",
-      "persona_id": "already_paid",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 3,
-          "pacing_and_tone": 4,
-          "recovery_off_script": 3,
-          "negotiation_quality": 2,
-          "clarity_of_confirmation": 2,
-          "appropriate_escalation": 3
-        },
-        "outcome": "failure",
-        "justification": "約束の合意に至らず、明確なエスカレーションまたは終了手続きも取られなかった。",
-        "mean_score": 2.83
-      },
-      "promise_to_pay": false,
-      "total_turns": 6,
-      "latencies_ms": [
-        0.58,
-        0.68,
-        0.61,
-        0.35,
-        0.37,
-        0.3
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_third_party_1000_1790946565655",
+      "session_id": "sim_v2_graph_third_party_1000_1795513740786",
       "variant": "v2_graph",
       "persona_id": "third_party",
       "seed": 1000,
@@ -1034,195 +142,23 @@
       "promise_to_pay": false,
       "total_turns": 2,
       "latencies_ms": [
-        0.57,
-        0.37,
-        5.0
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_third_party_1001_1790946565712",
-      "variant": "v2_graph",
-      "persona_id": "third_party",
-      "seed": 1001,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [
-          "third_party_protection"
-        ],
-        "final_violations": [],
-        "num_attempted": 1,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 2,
-      "latencies_ms": [
-        2.46,
-        0.56,
-        5.0
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_third_party_1002_1790946565798",
-      "variant": "v2_graph",
-      "persona_id": "third_party",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [
-          "third_party_protection"
-        ],
-        "final_violations": [],
-        "num_attempted": 1,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 2,
-      "latencies_ms": [
-        1.17,
-        0.65,
-        5.0
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_third_party_1003_1790946565882",
-      "variant": "v2_graph",
-      "persona_id": "third_party",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [
-          "third_party_protection"
-        ],
-        "final_violations": [],
-        "num_attempted": 1,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 2,
-      "latencies_ms": [
-        0.59,
-        0.75,
-        5.0
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_third_party_1004_1790946565940",
-      "variant": "v2_graph",
-      "persona_id": "third_party",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [
-          "third_party_protection"
-        ],
-        "final_violations": [],
-        "num_attempted": 1,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 2,
-      "latencies_ms": [
-        1.97,
-        0.54,
-        5.0
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_stop_contact_1000_1790946565998",
-      "variant": "v2_graph",
-      "persona_id": "stop_contact",
-      "seed": 1000,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 4,
-      "latencies_ms": [
+        1.41,
         1.95,
-        0.45,
-        0.21,
-        0.2
+        5.0
       ]
     },
     {
-      "session_id": "sim_v2_graph_stop_contact_1001_1790946566053",
+      "session_id": "sim_v2_graph_third_party_1001_1795513740914",
       "variant": "v2_graph",
-      "persona_id": "stop_contact",
+      "persona_id": "third_party",
       "seed": 1001,
       "hard_fail": {
         "passed": true,
-        "attempted_violations": [],
+        "attempted_violations": [
+          "third_party_protection"
+        ],
         "final_violations": [],
-        "num_attempted": 0,
+        "num_attempted": 1,
         "num_final": 0
       },
       "judge": {
@@ -1239,360 +175,51 @@
         "mean_score": 4.33
       },
       "promise_to_pay": false,
-      "total_turns": 4,
+      "total_turns": 2,
       "latencies_ms": [
-        0.62,
-        0.37,
-        0.29,
-        0.29
+        1.49,
+        1.21,
+        5.0
       ]
     },
     {
-      "session_id": "sim_v2_graph_stop_contact_1002_1790946566128",
+      "session_id": "sim_v2_graph_stop_contact_1000_1795513741018",
       "variant": "v2_graph",
       "persona_id": "stop_contact",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 4,
-      "latencies_ms": [
-        0.64,
-        0.37,
-        0.34,
-        0.22
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_stop_contact_1003_1790946566180",
-      "variant": "v2_graph",
-      "persona_id": "stop_contact",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 4,
-      "latencies_ms": [
-        1.98,
-        0.46,
-        0.32,
-        0.39
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_stop_contact_1004_1790946566246",
-      "variant": "v2_graph",
-      "persona_id": "stop_contact",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 4,
-      "latencies_ms": [
-        0.77,
-        0.53,
-        0.39,
-        0.31
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_off_script_1000_1790946566303",
-      "variant": "v2_graph",
-      "persona_id": "off_script",
       "seed": 1000,
       "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
+        "passed": true,
+        "attempted_violations": [],
+        "final_violations": [],
+        "num_attempted": 0,
+        "num_final": 0
       },
       "judge": {
         "scores": {
-          "listening_and_acknowledgement": 5,
+          "listening_and_acknowledgement": 4,
           "pacing_and_tone": 5,
           "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
+          "negotiation_quality": 4,
+          "clarity_of_confirmation": 4,
           "appropriate_escalation": 5
         },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
+        "outcome": "appropriate_non_promise_exit",
+        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
+        "mean_score": 4.33
       },
-      "promise_to_pay": true,
-      "total_turns": 7,
+      "promise_to_pay": false,
+      "total_turns": 4,
       "latencies_ms": [
-        0.75,
-        0.31,
-        0.37,
-        0.31,
-        0.34,
-        0.26,
-        0.28
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_off_script_1001_1790946566368",
-      "variant": "v2_graph",
-      "persona_id": "off_script",
-      "seed": 1001,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        2.13,
-        0.66,
+        2.66,
+        2.33,
         0.96,
-        1.15,
-        0.7,
-        0.42,
-        0.38
+        1.03
       ]
     },
     {
-      "session_id": "sim_v2_graph_off_script_1002_1790946566464",
+      "session_id": "sim_v2_graph_stop_contact_1001_1795513741138",
       "variant": "v2_graph",
-      "persona_id": "off_script",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.56,
-        0.6,
-        0.59,
-        0.55,
-        0.65,
-        0.53,
-        0.39
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_off_script_1003_1790946566524",
-      "variant": "v2_graph",
-      "persona_id": "off_script",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.56,
-        0.42,
-        0.22,
-        0.32,
-        0.3,
-        0.22,
-        0.16
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_off_script_1004_1790946566581",
-      "variant": "v2_graph",
-      "persona_id": "off_script",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": false,
-        "attempted_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "final_violations": [
-          "amount_disclosed_before_verification"
-        ],
-        "num_attempted": 1,
-        "num_final": 1
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 5,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 5,
-          "clarity_of_confirmation": 5,
-          "appropriate_escalation": 5
-        },
-        "outcome": "promise_secured",
-        "justification": "本人確認から告知、傾聴、分割提案、復唱確認まで完璧に完了し、約束を記録できた。",
-        "mean_score": 4.83
-      },
-      "promise_to_pay": true,
-      "total_turns": 7,
-      "latencies_ms": [
-        0.62,
-        0.48,
-        0.26,
-        0.33,
-        0.25,
-        0.19,
-        0.52
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_interrupting_1000_1790946566647",
-      "variant": "v2_graph",
-      "persona_id": "interrupting",
-      "seed": 1000,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        2.18,
-        0.34,
-        0.35,
-        0.48,
-        0.37
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_interrupting_1001_1790946566708",
-      "variant": "v2_graph",
-      "persona_id": "interrupting",
+      "persona_id": "stop_contact",
       "seed": 1001,
       "hard_fail": {
         "passed": true,
@@ -1615,293 +242,12 @@
         "mean_score": 4.33
       },
       "promise_to_pay": false,
-      "total_turns": 5,
+      "total_turns": 4,
       "latencies_ms": [
-        0.54,
-        0.7,
-        0.24,
-        0.18,
-        0.19
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_interrupting_1002_1790946566789",
-      "variant": "v2_graph",
-      "persona_id": "interrupting",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        0.67,
-        0.39,
-        0.37,
-        0.34,
-        0.35
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_interrupting_1003_1790946566852",
-      "variant": "v2_graph",
-      "persona_id": "interrupting",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        1.94,
-        0.47,
-        0.24,
-        0.34,
-        0.34
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_interrupting_1004_1790946566918",
-      "variant": "v2_graph",
-      "persona_id": "interrupting",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        0.8,
-        0.42,
-        0.77,
-        0.52,
-        0.31
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_fails_verification_1000_1790946566991",
-      "variant": "v2_graph",
-      "persona_id": "fails_verification",
-      "seed": 1000,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        1.26,
-        0.45,
-        0.52,
-        0.59,
-        0.4
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_fails_verification_1001_1790946567051",
-      "variant": "v2_graph",
-      "persona_id": "fails_verification",
-      "seed": 1001,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        1.86,
-        0.49,
-        0.34,
-        0.24,
-        0.19
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_fails_verification_1002_1790946567122",
-      "variant": "v2_graph",
-      "persona_id": "fails_verification",
-      "seed": 1002,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        0.54,
-        0.47,
-        0.36,
-        0.25,
-        0.2
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_fails_verification_1003_1790946567183",
-      "variant": "v2_graph",
-      "persona_id": "fails_verification",
-      "seed": 1003,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        0.58,
-        0.3,
-        0.22,
-        0.31,
-        0.59
-      ]
-    },
-    {
-      "session_id": "sim_v2_graph_fails_verification_1004_1790946567234",
-      "variant": "v2_graph",
-      "persona_id": "fails_verification",
-      "seed": 1004,
-      "hard_fail": {
-        "passed": true,
-        "attempted_violations": [],
-        "final_violations": [],
-        "num_attempted": 0,
-        "num_final": 0
-      },
-      "judge": {
-        "scores": {
-          "listening_and_acknowledgement": 4,
-          "pacing_and_tone": 5,
-          "recovery_off_script": 4,
-          "negotiation_quality": 4,
-          "clarity_of_confirmation": 4,
-          "appropriate_escalation": 5
-        },
-        "outcome": "appropriate_non_promise_exit",
-        "justification": "無理な督促を行わず、規程通りに適切な出口処理またはエスカレーションへ移行した。",
-        "mean_score": 4.33
-      },
-      "promise_to_pay": false,
-      "total_turns": 5,
-      "latencies_ms": [
-        0.72,
-        0.52,
-        0.33,
-        0.34,
-        0.27
+        1.22,
+        0.74,
+        0.92,
+        0.86
       ]
     }
   ]

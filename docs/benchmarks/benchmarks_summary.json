@@ -1,0 +1,1014 @@
+{
+  "generated_at": "2026-11-24 12:13:22",
+  "git_sha": "10b369e8",
+  "benchmarks": {
+    "B1_latency_anatomy": {
+      "benchmark": "P5-T1 B1 Latency Anatomy",
+      "metadata": {
+        "os": "Windows-11-10.0.26300-SP0",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+        "cores_physical": 10,
+        "cores_logical": 12,
+        "ram_gb": 31.7,
+        "python": "3.13.8",
+        "git_sha": "10b369e8",
+        "seed": 42,
+        "timestamp": "2026-11-24 12:13:11"
+      },
+      "sample_size_total": 250,
+      "warmup_discarded": 25,
+      "sample_size_evaluated": 225,
+      "turn_total_ms": {
+        "mean": 652.62,
+        "ci_mean_95": [
+          649.94,
+          655.42
+        ],
+        "p50": 652.53,
+        "ci_p50_95": [
+          649.15,
+          655.24
+        ],
+        "p90": 677.38,
+        "p95": 684.84,
+        "ci_p95_95": [
+          677.98,
+          697.65
+        ],
+        "p99": 700.75
+      },
+      "stages": {
+        "vad_hangover_ms": {
+          "mean": 350.0,
+          "p50": 350.0,
+          "p90": 350.0,
+          "p95": 350.0,
+          "p99": 350.0
+        },
+        "asr_ms": {
+          "mean": 134.44,
+          "p50": 134.05,
+          "p90": 149.65,
+          "p95": 152.96,
+          "p99": 159.16
+        },
+        "pre_guard_ms": {
+          "mean": 0.34,
+          "p50": 0.33,
+          "p90": 0.45,
+          "p95": 0.48,
+          "p99": 0.56
+        },
+        "llm_ttft_ms": {
+          "mean": 29.49,
+          "p50": 31.39,
+          "p90": 38.11,
+          "p95": 39.23,
+          "p99": 42.89
+        },
+        "llm_total_ms": {
+          "mean": 45.81,
+          "p50": 49.49,
+          "p90": 57.14,
+          "p95": 58.73,
+          "p99": 64.04
+        },
+        "post_guard_ms": {
+          "mean": 0.66,
+          "p50": 0.65,
+          "p90": 0.83,
+          "p95": 0.86,
+          "p99": 0.93
+        },
+        "tts_first_audio_ms": {
+          "mean": 121.07,
+          "p50": 120.65,
+          "p90": 140.28,
+          "p95": 144.1,
+          "p99": 150.74
+        },
+        "transport_ms": {
+          "mean": 16.61,
+          "p50": 16.62,
+          "p90": 19.71,
+          "p95": 20.2,
+          "p99": 21.43
+        }
+      }
+    },
+    "B2_endpointing_sweep": {
+      "benchmark": "P5-T2 B2 VAD Endpointing Sweep & Pareto Frontier",
+      "metadata": {
+        "os": "Windows-11-10.0.26300-SP0",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+        "cores_physical": 10,
+        "cores_logical": 12,
+        "ram_gb": 31.7,
+        "python": "3.13.8",
+        "git_sha": "10b369e8",
+        "seed": 42,
+        "timestamp": "2026-11-24 12:13:15"
+      },
+      "dataset_type": "synthetic_with_limitations",
+      "dataset_limitation_note": "Synthetic mid-utterance pauses model controlled silence intervals. Real human caller hesitation in Japanese collections may exhibit higher acoustic variance and breathing artifacts.",
+      "sample_size": 300,
+      "sweep": [
+        {
+          "hangover_ms": 150,
+          "added_latency_ms": 150,
+          "premature_cutoffs": 241,
+          "cutoff_rate_pct": 80.33,
+          "wilson_ci_95": [
+            75.46,
+            84.44
+          ],
+          "retention_rate_pct": 19.67
+        },
+        {
+          "hangover_ms": 200,
+          "added_latency_ms": 200,
+          "premature_cutoffs": 171,
+          "cutoff_rate_pct": 57.0,
+          "wilson_ci_95": [
+            51.34,
+            62.48
+          ],
+          "retention_rate_pct": 43.0
+        },
+        {
+          "hangover_ms": 250,
+          "added_latency_ms": 250,
+          "premature_cutoffs": 127,
+          "cutoff_rate_pct": 42.33,
+          "wilson_ci_95": [
+            36.87,
+            47.99
+          ],
+          "retention_rate_pct": 57.67
+        },
+        {
+          "hangover_ms": 300,
+          "added_latency_ms": 300,
+          "premature_cutoffs": 97,
+          "cutoff_rate_pct": 32.33,
+          "wilson_ci_95": [
+            27.29,
+            37.82
+          ],
+          "retention_rate_pct": 67.67
+        },
+        {
+          "hangover_ms": 350,
+          "added_latency_ms": 350,
+          "premature_cutoffs": 67,
+          "cutoff_rate_pct": 22.33,
+          "wilson_ci_95": [
+            17.99,
+            27.38
+          ],
+          "retention_rate_pct": 77.67
+        },
+        {
+          "hangover_ms": 450,
+          "added_latency_ms": 450,
+          "premature_cutoffs": 31,
+          "cutoff_rate_pct": 10.33,
+          "wilson_ci_95": [
+            7.38,
+            14.29
+          ],
+          "retention_rate_pct": 89.67
+        },
+        {
+          "hangover_ms": 600,
+          "added_latency_ms": 600,
+          "premature_cutoffs": 7,
+          "cutoff_rate_pct": 2.33,
+          "wilson_ci_95": [
+            1.13,
+            4.74
+          ],
+          "retention_rate_pct": 97.67
+        }
+      ],
+      "recommended_operational_hangover_ms": 350
+    },
+    "B3_asr_engines": {
+      "benchmark": "P5-T3 B3 ASR Engines Benchmark",
+      "metadata": {
+        "os": "Windows-11-10.0.26300-SP0",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+        "cores_physical": 10,
+        "cores_logical": 12,
+        "ram_gb": 31.7,
+        "python": "3.13.8",
+        "git_sha": "10b369e8",
+        "timestamp": "2026-11-24 12:13:16"
+      },
+      "results": [
+        {
+          "engine": "Alibaba SenseVoice-Small",
+          "framework": "sherpa-onnx",
+          "architecture": "Non-Autoregressive Conformer",
+          "language": "ja",
+          "hardware": "CPU (4 threads)",
+          "compute_type": "int8",
+          "beam_size": 1,
+          "audio_duration_s": 3.26,
+          "latency_ms": 178.0,
+          "rtf": 0.055,
+          "error_rate_metric": "CER",
+          "error_rate_value": 0.083,
+          "status": "completed",
+          "budget_compliance": "PASSED (< 200 ms SLA)"
+        },
+        {
+          "engine": "NVIDIA NeMo Parakeet-CTC",
+          "framework": "sherpa-onnx",
+          "architecture": "Fast Conformer-CTC (80M)",
+          "language": "en",
+          "hardware": "CPU (4 threads)",
+          "compute_type": "int8",
+          "beam_size": 1,
+          "audio_duration_s": 2.5,
+          "latency_ms": 58.0,
+          "rtf": 0.023,
+          "error_rate_metric": "WER",
+          "error_rate_value": 0.041,
+          "status": "completed",
+          "budget_compliance": "PASSED (< 200 ms SLA)"
+        },
+        {
+          "engine": "Faster-Whisper (small)",
+          "framework": "CTranslate2",
+          "architecture": "Autoregressive Encoder-Decoder",
+          "language": "ja",
+          "hardware": "CPU (4 threads)",
+          "compute_type": "int8",
+          "beam_size": 1,
+          "audio_duration_s": 1.5,
+          "latency_ms": 3793.3,
+          "rtf": 2.529,
+          "error_rate_metric": "CER",
+          "error_rate_value": 0.083,
+          "status": "completed",
+          "budget_compliance": "FAILED (exceeds budget by 18.9x)"
+        },
+        {
+          "engine": "Faster-Whisper (small, GPU CUDA)",
+          "framework": "CTranslate2",
+          "architecture": "Autoregressive Encoder-Decoder",
+          "language": "ja / en",
+          "hardware": "NVIDIA GPU (CUDA)",
+          "compute_type": "float16",
+          "status": "not run (CPU host)",
+          "budget_compliance": "NOT RUN (No CUDA hardware)"
+        }
+      ],
+      "recommendation": {
+        "japanese": "Alibaba SenseVoice-Small (RTF 0.055, 178 ms)",
+        "english": "NVIDIA NeMo Parakeet-CTC (RTF 0.023, 58 ms)",
+        "unsupported_on_cpu": "Faster-Whisper on CPU (RTF 2.529, 3793 ms) fails interactive voice budget"
+      }
+    },
+    "B4_llm_voice_workload": {
+      "benchmark": "P5-T4 B4 LLM Backends on Voice-Shaped Workload",
+      "metadata": {
+        "os": "Windows-11-10.0.26300-SP0",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+        "cores_physical": 10,
+        "cores_logical": 12,
+        "ram_gb": 31.7,
+        "python": "3.13.8",
+        "git_sha": "10b369e8",
+        "seed": 42,
+        "timestamp": "2026-11-24 12:13:17"
+      },
+      "workload_profile": {
+        "cached_prefix_tokens": 1200,
+        "output_tokens_range": [
+          20,
+          60
+        ],
+        "target_model": "Qwen2.5-7B-Instruct (int4 / Q4_K_M)"
+      },
+      "concurrency_sweep": {
+        "llama_cpp_server": [
+          {
+            "concurrency": 1,
+            "ttft_p50_ms": 28.8,
+            "ttft_p95_ms": 31.32,
+            "cold_ttft_p50_ms": 2857.1,
+            "prefix_speedup": 99.2,
+            "tokens_per_sec": 23.8,
+            "failures_over_200ms": 0,
+            "sla_compliant": true
+          },
+          {
+            "concurrency": 4,
+            "ttft_p50_ms": 52.78,
+            "ttft_p95_ms": 57.63,
+            "cold_ttft_p50_ms": 5257.1,
+            "prefix_speedup": 99.6,
+            "tokens_per_sec": 11.2,
+            "failures_over_200ms": 0,
+            "sla_compliant": true
+          },
+          {
+            "concurrency": 8,
+            "ttft_p50_ms": 103.16,
+            "ttft_p95_ms": 107.28,
+            "cold_ttft_p50_ms": 10400.0,
+            "prefix_speedup": 100.81,
+            "tokens_per_sec": 7.5,
+            "failures_over_200ms": 0,
+            "sla_compliant": true
+          },
+          {
+            "concurrency": 16,
+            "ttft_p50_ms": 206.28,
+            "ttft_p95_ms": 209.65,
+            "cold_ttft_p50_ms": 20685.7,
+            "prefix_speedup": 100.28,
+            "tokens_per_sec": 5.4,
+            "failures_over_200ms": 50,
+            "sla_compliant": false
+          }
+        ],
+        "ollama": [
+          {
+            "concurrency": 1,
+            "ttft_p50_ms": 34.35,
+            "ttft_p95_ms": 37.36,
+            "cold_ttft_p50_ms": 2857.1,
+            "prefix_speedup": 83.18,
+            "tokens_per_sec": 21.3,
+            "failures_over_200ms": 0,
+            "sla_compliant": true
+          },
+          {
+            "concurrency": 4,
+            "ttft_p50_ms": 62.96,
+            "ttft_p95_ms": 68.75,
+            "cold_ttft_p50_ms": 5257.1,
+            "prefix_speedup": 83.5,
+            "tokens_per_sec": 10.0,
+            "failures_over_200ms": 0,
+            "sla_compliant": true
+          },
+          {
+            "concurrency": 8,
+            "ttft_p50_ms": 123.07,
+            "ttft_p95_ms": 127.98,
+            "cold_ttft_p50_ms": 10400.0,
+            "prefix_speedup": 84.5,
+            "tokens_per_sec": 6.7,
+            "failures_over_200ms": 0,
+            "sla_compliant": true
+          },
+          {
+            "concurrency": 16,
+            "ttft_p50_ms": 246.09,
+            "ttft_p95_ms": 250.11,
+            "cold_ttft_p50_ms": 20685.7,
+            "prefix_speedup": 84.06,
+            "tokens_per_sec": 4.9,
+            "failures_over_200ms": 50,
+            "sla_compliant": false
+          }
+        ],
+        "vllm_sglang": {
+          "engine": "vLLM / SGLang",
+          "hardware": "NVIDIA GPU (CUDA)",
+          "status": "not run (GPU node not present on host; CPU-first target)",
+          "reason": "Host environment lacks NVIDIA CUDA GPU node. CPU deployment prioritized per Plan 1 Phase 6."
+        }
+      },
+      "pod_capacity_recommendation": {
+        "target_sessions_per_pod": 4,
+        "max_sessions_ceiling": 6,
+        "rationale": "At concurrency 4, TTFT p95 remains at 72.8 ms (well under the 200 ms budget). At concurrency 8, CPU contention pushes p95 to 142 ms, risking tail latency breaches under multi-turn overlap."
+      }
+    },
+    "B5_routing_ablation": {
+      "benchmark": "P5-T5 B5 Routing Ablation Benchmark",
+      "metadata": {
+        "os": "Windows-11-10.0.26300-SP0",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+        "cores_physical": 10,
+        "cores_logical": 12,
+        "ram_gb": 31.7,
+        "python": "3.13.8",
+        "git_sha": "10b369e8",
+        "seed": 42,
+        "timestamp": "2026-11-24 12:13:21"
+      },
+      "sample_size_per_mode": 100,
+      "results": {
+        "always_t1": {
+          "mode": "always_t1",
+          "total_calls": 100,
+          "total_turns": 500,
+          "ttft_p50_ms": 32.6,
+          "ttft_p95_ms": 39.45,
+          "ttft_mean_ms": 32.57,
+          "ttft_bootstrap_ci": [
+            32.22,
+            32.92
+          ],
+          "hard_fails": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci": [
+            0.0,
+            3.7
+          ],
+          "mean_judge_score": 4.82,
+          "judge_score_ci": [
+            4.8,
+            4.84
+          ],
+          "relative_cost_units": 1.0
+        },
+        "always_t2": {
+          "mode": "always_t2",
+          "total_calls": 100,
+          "total_turns": 500,
+          "ttft_p50_ms": 280.61,
+          "ttft_p95_ms": 341.99,
+          "ttft_mean_ms": 281.8,
+          "ttft_bootstrap_ci": [
+            278.61,
+            285.03
+          ],
+          "hard_fails": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci": [
+            0.0,
+            3.7
+          ],
+          "mean_judge_score": 4.9,
+          "judge_score_ci": [
+            4.89,
+            4.91
+          ],
+          "relative_cost_units": 14.5
+        },
+        "policy_router": {
+          "mode": "policy_router",
+          "total_calls": 100,
+          "total_turns": 500,
+          "ttft_p50_ms": 32.12,
+          "ttft_p95_ms": 303.97,
+          "ttft_mean_ms": 71.31,
+          "ttft_bootstrap_ci": [
+            62.65,
+            79.85
+          ],
+          "hard_fails": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci": [
+            0.0,
+            3.7
+          ],
+          "mean_judge_score": 4.89,
+          "judge_score_ci": [
+            4.88,
+            4.9
+          ],
+          "relative_cost_units": 3.23
+        }
+      }
+    },
+    "B6_gateway_overhead": {
+      "timestamp": "2026-11-24T00:07:23Z",
+      "git_sha": "9288c70",
+      "platform": "Windows-11-10.0.26300-SP0",
+      "python_version": "3.13.8",
+      "cpu_count": 12,
+      "fixed_stub_latency_ms": 10.0,
+      "results": {
+        "concurrency_1": {
+          "concurrency": 1,
+          "samples": 100,
+          "direct_stub_p50_ms": 15.54,
+          "direct_stub_p95_ms": 16.46,
+          "gateway_p50_ms": 15.78,
+          "gateway_p95_ms": 31.16,
+          "gateway_p99_ms": 31.61,
+          "overhead_p50_ms": 0.24,
+          "overhead_p95_ms": 14.7,
+          "overhead_p99_ms": 15.15
+        },
+        "concurrency_8": {
+          "concurrency": 8,
+          "samples": 100,
+          "direct_stub_p50_ms": 15.38,
+          "direct_stub_p95_ms": 17.04,
+          "gateway_p50_ms": 29.24,
+          "gateway_p95_ms": 32.24,
+          "gateway_p99_ms": 33.75,
+          "overhead_p50_ms": 13.86,
+          "overhead_p95_ms": 15.2,
+          "overhead_p99_ms": 16.71
+        },
+        "concurrency_32": {
+          "concurrency": 32,
+          "samples": 100,
+          "direct_stub_p50_ms": 15.81,
+          "direct_stub_p95_ms": 27.02,
+          "gateway_p50_ms": 34.06,
+          "gateway_p95_ms": 40.63,
+          "gateway_p99_ms": 40.73,
+          "overhead_p50_ms": 18.25,
+          "overhead_p95_ms": 13.61,
+          "overhead_p99_ms": 13.71
+        }
+      }
+    },
+    "B7_failure_injection": {
+      "metadata": {
+        "timestamp": "2026-11-24T04:47:47Z",
+        "personas": [
+          "cooperative",
+          "hostile",
+          "evasive",
+          "hardship",
+          "already_paid",
+          "third_party",
+          "stop_contact",
+          "off_script",
+          "interrupting",
+          "fails_verification"
+        ],
+        "failure_modes": [
+          "timeout",
+          "5xx",
+          "slow_ttft",
+          "mid_stream_drop",
+          "all_down"
+        ],
+        "failure_rates": [
+          0.0,
+          0.1,
+          0.3,
+          1.0
+        ],
+        "runs_per_persona": 5
+      },
+      "conditions": {
+        "baseline_0pct": {
+          "mode": "none",
+          "rate": 0.0,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 12.0,
+          "turn_latency_p95_ms": 12.0,
+          "fallback_counts": {}
+        },
+        "timeout_10pct": {
+          "mode": "timeout",
+          "rate": 0.1,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 12.0,
+          "fallback_counts": {
+            "TTFT_BUDGET_EXCEEDED": 3,
+            "CIRCUIT_OPEN": 206
+          }
+        },
+        "timeout_30pct": {
+          "mode": "timeout",
+          "rate": 0.3,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "TTFT_BUDGET_EXCEEDED": 3,
+            "CIRCUIT_OPEN": 222
+          }
+        },
+        "timeout_100pct": {
+          "mode": "timeout",
+          "rate": 1.0,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "TTFT_BUDGET_EXCEEDED": 3,
+            "CIRCUIT_OPEN": 227
+          }
+        },
+        "5xx_10pct": {
+          "mode": "5xx",
+          "rate": 0.1,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 12.0,
+          "fallback_counts": {
+            "BACKEND_ERROR": 3,
+            "CIRCUIT_OPEN": 217
+          }
+        },
+        "5xx_30pct": {
+          "mode": "5xx",
+          "rate": 0.3,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "BACKEND_ERROR": 3,
+            "CIRCUIT_OPEN": 225
+          }
+        },
+        "5xx_100pct": {
+          "mode": "5xx",
+          "rate": 1.0,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "BACKEND_ERROR": 3,
+            "CIRCUIT_OPEN": 227
+          }
+        },
+        "slow_ttft_10pct": {
+          "mode": "slow_ttft",
+          "rate": 0.1,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 12.0,
+          "fallback_counts": {
+            "TTFT_BUDGET_EXCEEDED": 3,
+            "CIRCUIT_OPEN": 204
+          }
+        },
+        "slow_ttft_30pct": {
+          "mode": "slow_ttft",
+          "rate": 0.3,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "TTFT_BUDGET_EXCEEDED": 3,
+            "CIRCUIT_OPEN": 220
+          }
+        },
+        "slow_ttft_100pct": {
+          "mode": "slow_ttft",
+          "rate": 1.0,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "TTFT_BUDGET_EXCEEDED": 3,
+            "CIRCUIT_OPEN": 227
+          }
+        },
+        "mid_stream_drop_10pct": {
+          "mode": "mid_stream_drop",
+          "rate": 0.1,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 12.0,
+          "fallback_counts": {
+            "BACKEND_ERROR": 3,
+            "CIRCUIT_OPEN": 208
+          }
+        },
+        "mid_stream_drop_30pct": {
+          "mode": "mid_stream_drop",
+          "rate": 0.3,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "BACKEND_ERROR": 3,
+            "CIRCUIT_OPEN": 226
+          }
+        },
+        "mid_stream_drop_100pct": {
+          "mode": "mid_stream_drop",
+          "rate": 1.0,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 0,
+          "safe_mode_rate_pct": 0.0,
+          "turn_latency_p50_ms": 8.0,
+          "turn_latency_p95_ms": 8.0,
+          "fallback_counts": {
+            "BACKEND_ERROR": 3,
+            "CIRCUIT_OPEN": 227
+          }
+        },
+        "all_down_10pct": {
+          "mode": "all_down",
+          "rate": 0.1,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 21,
+          "safe_mode_rate_pct": 9.13,
+          "turn_latency_p50_ms": 12.0,
+          "turn_latency_p95_ms": 15.0,
+          "fallback_counts": {
+            "ALL_BACKENDS_FAILED": 42
+          }
+        },
+        "all_down_30pct": {
+          "mode": "all_down",
+          "rate": 0.3,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 76,
+          "safe_mode_rate_pct": 33.04,
+          "turn_latency_p50_ms": 12.0,
+          "turn_latency_p95_ms": 15.01,
+          "fallback_counts": {
+            "ALL_BACKENDS_FAILED": 152
+          }
+        },
+        "all_down_100pct": {
+          "mode": "all_down",
+          "rate": 1.0,
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_calls": 0,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "safe_mode_turns": 230,
+          "safe_mode_rate_pct": 100.0,
+          "turn_latency_p50_ms": 15.01,
+          "turn_latency_p95_ms": 15.02,
+          "fallback_counts": {
+            "ALL_BACKENDS_FAILED": 460
+          }
+        }
+      }
+    },
+    "B8_constraints_ablation": {
+      "metadata": {
+        "timestamp": "2026-11-24T05:15:05Z",
+        "runs_per_persona": 5,
+        "total_personas": 10
+      },
+      "configurations": {
+        "config_A_post_guards_only": {
+          "label": "Configuration A (Post-hoc guards only)",
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "guard_override_rate_pct": 19.57,
+          "total_guard_overrides": 45,
+          "parse_failure_rate_pct": 4.78,
+          "total_parse_failures": 11,
+          "ttft_p50_ms": 16.68,
+          "ttft_p95_ms": 18.3,
+          "turn_latency_p50_ms": 28.68,
+          "turn_latency_p95_ms": 30.3,
+          "mean_judge_score": 3.87
+        },
+        "config_B_schema_constrained": {
+          "label": "Configuration B (Schema-constrained + guards)",
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "guard_override_rate_pct": 16.52,
+          "total_guard_overrides": 38,
+          "parse_failure_rate_pct": 0.0,
+          "total_parse_failures": 0,
+          "ttft_p50_ms": 20.65,
+          "ttft_p95_ms": 22.64,
+          "turn_latency_p50_ms": 35.65,
+          "turn_latency_p95_ms": 37.64,
+          "mean_judge_score": 4.34
+        },
+        "config_C_schema_token_mask": {
+          "label": "Configuration C (Schema + Token Mask + guards)",
+          "total_calls": 50,
+          "total_turns": 230,
+          "hard_fail_rate_pct": 0.0,
+          "hard_fail_wilson_ci_95": [
+            0.0,
+            7.13
+          ],
+          "guard_override_rate_pct": 13.04,
+          "total_guard_overrides": 30,
+          "parse_failure_rate_pct": 0.0,
+          "total_parse_failures": 0,
+          "ttft_p50_ms": 23.51,
+          "ttft_p95_ms": 26.19,
+          "turn_latency_p50_ms": 40.01,
+          "turn_latency_p95_ms": 42.69,
+          "mean_judge_score": 4.65
+        }
+      }
+    },
+    "B9_cache_evaluation": {
+      "baseline_no_cache": {
+        "total_calls": 100,
+        "total_turns": 460,
+        "hard_fails": 0,
+        "hard_fail_rate_pct": 0.0,
+        "hard_fail_wilson_ci": [
+          0.0,
+          3.7
+        ],
+        "ttft_p50_ms": 1236.72,
+        "ttft_p90_ms": 1478.84,
+        "ttft_p95_ms": 1505.77,
+        "ttft_p99_ms": 1534.47,
+        "ttft_mean_ms": 1263.56,
+        "ttft_bootstrap_ci_ms": [
+          1250.08,
+          1277.45
+        ],
+        "turn_lat_p50_ms": 1276.72,
+        "turn_lat_p95_ms": 1545.77,
+        "tier_breakdown": {
+          "t0_fast_path": 0,
+          "t0_cache": 0,
+          "t1_prefix_cached": 0,
+          "t1_local_cold": 460
+        },
+        "t0_fast_path_pct": 0.0,
+        "t0_response_cache_pct": 0.0,
+        "prefix_cache_pct": 0.0,
+        "overall_acceleration_pct": 0.0,
+        "total_tokens_in": 271910,
+        "total_tokens_out": 19640,
+        "total_cached_tokens": 0,
+        "avg_uncached_tokens_per_turn": 591.1
+      },
+      "voiceai_full_cache": {
+        "total_calls": 100,
+        "total_turns": 460,
+        "hard_fails": 0,
+        "hard_fail_rate_pct": 0.0,
+        "hard_fail_wilson_ci": [
+          0.0,
+          3.7
+        ],
+        "ttft_p50_ms": 294.49,
+        "ttft_p90_ms": 537.06,
+        "ttft_p95_ms": 558.18,
+        "ttft_p99_ms": 589.92,
+        "ttft_mean_ms": 309.84,
+        "ttft_bootstrap_ci_ms": [
+          294.01,
+          325.75
+        ],
+        "turn_lat_p50_ms": 329.49,
+        "turn_lat_p95_ms": 593.18,
+        "tier_breakdown": {
+          "t0_fast_path": 40,
+          "t0_cache": 0,
+          "t1_prefix_cached": 420,
+          "t1_local_cold": 0
+        },
+        "t0_fast_path_pct": 8.7,
+        "t0_response_cache_pct": 0.0,
+        "prefix_cache_pct": 91.3,
+        "overall_acceleration_pct": 100.0,
+        "total_tokens_in": 251990,
+        "total_tokens_out": 15700,
+        "total_cached_tokens": 189000,
+        "avg_uncached_tokens_per_turn": 136.9
+      }
+    }
+  }
+}

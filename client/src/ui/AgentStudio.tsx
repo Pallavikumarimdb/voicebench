@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { StudioPersonaItem, ToolItem, SimulationResult } from '../data/types.ts';
 import { apiClient } from '../data/apiClient.ts';
 import { PageHeader, Badge, EmptyState } from './primitives.tsx';
+import { PolicyPanel } from './PolicyPanel.tsx';
 
 export const AgentStudio: React.FC = () => {
+  const [studioView, setStudioView] = useState<'personas' | 'policies'>('personas');
   const [personas, setPersonas] = useState<StudioPersonaItem[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
   const [availableTools, setAvailableTools] = useState<ToolItem[]>([]);
@@ -200,13 +202,41 @@ export const AgentStudio: React.FC = () => {
         title="No-Code Voice Agent Studio"
         desc="Visually design agent personas, tune LLM prompts, configure voice timbre, assign tools, and test live conversation turns."
         right={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-sm btn-primary" onClick={handleCreateNew}>
-              + New Persona
-            </button>
-            <button className="btn btn-sm" onClick={handleSave} disabled={saving} style={{ background: '#10b981', color: '#fff', border: 'none' }}>
-              {saving ? 'Saving...' : '💾 Save Persona'}
-            </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, padding: 2, marginRight: 8 }}>
+              <button
+                onClick={() => setStudioView('personas')}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, border: 'none', fontSize: 12.5, fontWeight: 650,
+                  background: studioView === 'personas' ? '#101828' : 'transparent',
+                  color: studioView === 'personas' ? '#fff' : 'var(--text-secondary)',
+                  cursor: 'pointer'
+                }}
+              >
+                Personas
+              </button>
+              <button
+                onClick={() => setStudioView('policies')}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, border: 'none', fontSize: 12.5, fontWeight: 650,
+                  background: studioView === 'policies' ? '#101828' : 'transparent',
+                  color: studioView === 'policies' ? '#fff' : 'var(--text-secondary)',
+                  cursor: 'pointer'
+                }}
+              >
+                Inference Policies
+              </button>
+            </div>
+            {studioView === 'personas' && (
+              <>
+                <button className="btn btn-sm btn-primary" onClick={handleCreateNew}>
+                  + New Persona
+                </button>
+                <button className="btn btn-sm" onClick={handleSave} disabled={saving} style={{ background: '#10b981', color: '#fff', border: 'none' }}>
+                  {saving ? 'Saving...' : '💾 Save Persona'}
+                </button>
+              </>
+            )}
           </div>
         }
       />
@@ -222,7 +252,12 @@ export const AgentStudio: React.FC = () => {
         </div>
       )}
 
-      {/* 3-Column Studio Layout */}
+      {/* Main Studio View: Personas or Policies */}
+      {studioView === 'policies' ? (
+        <div className="card card-pad" style={{ marginTop: 12 }}>
+          <PolicyPanel />
+        </div>
+      ) : (
       <div style={{ display: 'grid', gridTemplateColumns: '260px minmax(0, 1.8fr) minmax(360px, 1.2fr)', gap: 16, alignItems: 'start' }}>
         
         {/* COLUMN 1: Persona Library List */}
@@ -827,6 +862,7 @@ export const AgentStudio: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

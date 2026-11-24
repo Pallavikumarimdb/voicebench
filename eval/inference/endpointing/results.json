@@ -1,0 +1,97 @@
+{
+  "benchmark": "P5-T2 B2 VAD Endpointing Sweep & Pareto Frontier",
+  "metadata": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+    "cores_physical": 10,
+    "cores_logical": 12,
+    "ram_gb": 31.7,
+    "python": "3.13.8",
+    "git_sha": "10b369e8",
+    "seed": 42,
+    "timestamp": "2026-11-24 12:13:15"
+  },
+  "dataset_type": "synthetic_with_limitations",
+  "dataset_limitation_note": "Synthetic mid-utterance pauses model controlled silence intervals. Real human caller hesitation in Japanese collections may exhibit higher acoustic variance and breathing artifacts.",
+  "sample_size": 300,
+  "sweep": [
+    {
+      "hangover_ms": 150,
+      "added_latency_ms": 150,
+      "premature_cutoffs": 241,
+      "cutoff_rate_pct": 80.33,
+      "wilson_ci_95": [
+        75.46,
+        84.44
+      ],
+      "retention_rate_pct": 19.67
+    },
+    {
+      "hangover_ms": 200,
+      "added_latency_ms": 200,
+      "premature_cutoffs": 171,
+      "cutoff_rate_pct": 57.0,
+      "wilson_ci_95": [
+        51.34,
+        62.48
+      ],
+      "retention_rate_pct": 43.0
+    },
+    {
+      "hangover_ms": 250,
+      "added_latency_ms": 250,
+      "premature_cutoffs": 127,
+      "cutoff_rate_pct": 42.33,
+      "wilson_ci_95": [
+        36.87,
+        47.99
+      ],
+      "retention_rate_pct": 57.67
+    },
+    {
+      "hangover_ms": 300,
+      "added_latency_ms": 300,
+      "premature_cutoffs": 97,
+      "cutoff_rate_pct": 32.33,
+      "wilson_ci_95": [
+        27.29,
+        37.82
+      ],
+      "retention_rate_pct": 67.67
+    },
+    {
+      "hangover_ms": 350,
+      "added_latency_ms": 350,
+      "premature_cutoffs": 67,
+      "cutoff_rate_pct": 22.33,
+      "wilson_ci_95": [
+        17.99,
+        27.38
+      ],
+      "retention_rate_pct": 77.67
+    },
+    {
+      "hangover_ms": 450,
+      "added_latency_ms": 450,
+      "premature_cutoffs": 31,
+      "cutoff_rate_pct": 10.33,
+      "wilson_ci_95": [
+        7.38,
+        14.29
+      ],
+      "retention_rate_pct": 89.67
+    },
+    {
+      "hangover_ms": 600,
+      "added_latency_ms": 600,
+      "premature_cutoffs": 7,
+      "cutoff_rate_pct": 2.33,
+      "wilson_ci_95": [
+        1.13,
+        4.74
+      ],
+      "retention_rate_pct": 97.67
+    }
+  ],
+  "recommended_operational_hangover_ms": 350
+}

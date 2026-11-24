@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: voiceai-ingress
+  namespace: voiceai
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Session Affinity at connection time (Plan 1 Section 6 P6-T3)
+    # Sticky cookies ensure in-flight WebSockets remain anchored to the serving pod
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "VOICEAI_INGRESS_AFFINITY"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "10800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "10800"
+    # WebSocket proxy timeout for long conversational sessions (up to 15m)
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "900"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 8443
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 8443
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: client-service
+                port:
+                  number: 80

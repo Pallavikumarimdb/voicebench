@@ -1,0 +1,23 @@
+{
+  "name": "@voice/guards-spec",
+  "version": "0.1.0",
+  "description": "Single source of truth compliance rules, regex patterns, and conformance test vectors",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./rules.json": "./rules.json",
+    "./conformance.json": "./conformance.json"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}
