@@ -409,9 +409,11 @@ class GeneralizedVoiceAgent:
             ]
             timeout = float(os.getenv("AGENT_LOCAL_TIMEOUT_S", "12.0")) if provider == "local" else 3.5
             max_tok = 60 if provider == "local" else 100
+            risk_tier = ctx.state.get("risk_tier", "low")
             res = llm_client.complete_with(
                 provider, messages, model=model,
                 temperature=0.4, max_tokens=max_tok, timeout_s=timeout,
+                risk_tier=risk_tier, dialogue_state=stage
             )
             text = (res.get("text") or "").strip()
             if not text or len(text) > 600:

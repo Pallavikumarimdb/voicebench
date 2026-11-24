@@ -29,6 +29,7 @@ from .state import CallState
 from .compliance.guard import ComplianceGuard
 from .generalized import GeneralizedVoiceAgent
 from .llm import llm_client
+from .risk import derive_risk_tier
 from .tool_registry import tool_registry, ToolDefinition, ToolParameter
 from .agent_studio import studio_manager
 
@@ -216,6 +217,11 @@ async def turn(req: BrainRequest) -> BrainResponse:
     cfg = req.config or session_data.get("config", {})
     domain = cfg.get("domain", "collections")
     language = cfg.get("language", "ja")
+
+    # Plan 1 P2-T2: Derive risk_tier deterministically from graph state
+    risk_tier = derive_risk_tier(state, domain)
+    state["risk_tier"] = risk_tier
+    cfg["risk_tier"] = risk_tier
 
     with AGENT_TURN_LATENCY.labels(stage="turn_total").time():
         if domain in ["screening", "kyc", "custom"] or (domain == "collections" and language == "en"):
