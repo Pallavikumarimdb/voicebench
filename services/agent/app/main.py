@@ -30,6 +30,7 @@ from .compliance.guard import ComplianceGuard
 from .generalized import GeneralizedVoiceAgent
 from .llm import llm_client
 from .risk import derive_risk_tier
+from .safe_mode import get_safe_mode_response
 from .tool_registry import tool_registry, ToolDefinition, ToolParameter
 from .agent_studio import studio_manager
 
@@ -224,21 +225,48 @@ async def turn(req: BrainRequest) -> BrainResponse:
     cfg["risk_tier"] = risk_tier
 
     with AGENT_TURN_LATENCY.labels(stage="turn_total").time():
-        if domain in ["screening", "kyc", "custom"] or (domain == "collections" and language == "en"):
-            turn_result = generalized_agent.process_turn(
-                req.sessionId, req.text, state, config=cfg, audit_logger=audit_logger
-            )
-        else:
-            # Select engine for Japanese collections
-            if variant == "v1_baseline":
-                agent = baseline_agent
-            elif variant == "v2_graph_no_slow_path":
-                agent = graph_agent_fast_only
+        try:
+            if domain in ["screening", "kyc", "custom"] or (domain == "collections" and language == "en"):
+                turn_result = generalized_agent.process_turn(
+                    req.sessionId, req.text, state, config=cfg, audit_logger=audit_logger
+                )
             else:
-                agent = graph_agent
+                # Select engine for Japanese collections
+                if variant == "v1_baseline":
+                    agent = baseline_agent
+                elif variant == "v2_graph_no_slow_path":
+                    agent = graph_agent_fast_only
+                else:
+                    agent = graph_agent
 
-            turn_result = agent.process_turn(req.sessionId, req.text, state, audit_logger)
-        
+                turn_result = agent.process_turn(req.sessionId, req.text, state, audit_logger)
+        except Exception as ex:
+            # Plan 1 P2-T4: Catch total outages and initiate safe-mode (T3)
+            safe_text, reason_code = get_safe_mode_response(domain, language)
+            post_block = guard.check_post_llm(safe_text, state)
+            if post_block:
+                _, safe_text = post_block
+            turn_result = {
+                "text": safe_text,
+                "events": [{"type": "escalate", "payload": {"action": "human_handoff", "reason": "ALL_BACKENDS_FAILED", "error": str(ex)}}],
+                "metrics": {"llmMs": 0.0, "ttftMs": 0.0, "tokensIn": len(req.text), "tokensOut": len(safe_text), "model": "t3_safe_mode"},
+                "x_voiceai": {"tier": "t3_safe_mode", "reason_code": "ALL_BACKENDS_FAILED"}
+            }
+
+        # Check if returned result specifically triggered safe mode (t3_safe_mode)
+        x_voiceai = turn_result.get("x_voiceai") or {}
+        if x_voiceai.get("tier") == "t3_safe_mode" or x_voiceai.get("reason_code") == "ALL_BACKENDS_FAILED":
+            safe_text, reason_code = get_safe_mode_response(domain, language)
+            post_block = guard.check_post_llm(safe_text, state)
+            if post_block:
+                _, safe_text = post_block
+            turn_result["text"] = safe_text
+            turn_result.setdefault("events", []).append({
+                "type": "escalate",
+                "payload": {"action": "human_handoff", "reason": "ALL_BACKENDS_FAILED", "domain": domain}
+            })
+            turn_result["x_voiceai"] = {"tier": "t3_safe_mode", "reason_code": "ALL_BACKENDS_FAILED"}
+
         reply_text = turn_result["text"]
         raw_events = turn_result.get("events", [])
         raw_metrics = turn_result.get("metrics", {})
