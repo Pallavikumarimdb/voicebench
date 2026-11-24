@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" width="800" height="420">
+  <style>
+    .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 20px; font-weight: bold; fill: #2C3E50; }
+    .subtitle { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 13px; fill: #7F8C8D; }
+    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 13px; font-weight: 500; fill: #34495E; text-anchor: end; }
+    .val { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: bold; fill: #2C3E50; }
+    .grid { stroke: #ECF0F1; stroke-width: 1; }
+  </style>
+  <rect width="800" height="420" fill="#FFFFFF" rx="8" />
+  <text x="30" y="45" class="title">VoiceAI Pipeline Stage Latency Anatomy (B1)</text>
+  <text x="30" y="70" class="subtitle">Evaluated on 225 turns (warmup discarded). Total Turn p50: 652.53 ms (Budget: 1000 ms)</text>
+  <text x="225" y="128" class="label">VAD Hangover</text>
+  <rect x="240" y="110" width="417" height="24" rx="4" fill="#4A90E2" />
+  <text x="667" y="127" class="val">350.0 ms (53.6%)</text>
+  <text x="225" y="164" class="label">ASR (SenseVoice)</text>
+  <rect x="240" y="146" width="159" height="24" rx="4" fill="#50E3C2" />
+  <text x="409" y="163" class="val">134.1 ms (20.5%)</text>
+  <text x="225" y="200" class="label">Pre-Guard</text>
+  <rect x="240" y="182" width="0" height="24" rx="4" fill="#F5A623" />
+  <text x="250" y="199" class="val">0.3 ms (0.1%)</text>
+  <text x="225" y="236" class="label">LLM TTFT</text>
+  <rect x="240" y="218" width="37" height="24" rx="4" fill="#9013FE" />
+  <text x="287" y="235" class="val">31.4 ms (4.8%)</text>
+  <text x="225" y="272" class="label">Post-Guard</text>
+  <rect x="240" y="254" width="0" height="24" rx="4" fill="#F8E71C" />
+  <text x="250" y="271" class="val">0.7 ms (0.1%)</text>
+  <text x="225" y="308" class="label">TTS First Audio</text>
+  <rect x="240" y="290" width="143" height="24" rx="4" fill="#B8E986" />
+  <text x="393" y="307" class="val">120.7 ms (18.5%)</text>
+  <text x="225" y="344" class="label">Network Transport</text>
+  <rect x="240" y="326" width="19" height="24" rx="4" fill="#7ED321" />
+  <text x="269" y="343" class="val">16.6 ms (2.5%)</text>
+  <line x1="30" y1="375" x2="770" y2="375" stroke="#BDC3C7" stroke-width="1" />
+  <text x="30" y="398" class="val" style="font-size: 14px; fill: #27AE60;">Total Voice Turn (p50): 652.53 ms | p95: 684.84 ms | p99: 700.75 ms</text>
+</svg>
