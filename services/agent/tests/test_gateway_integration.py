@@ -66,7 +66,7 @@ def test_llm_client_gateway_routing(monkeypatch):
     class MockGatewayClient(LLMClient):
         def call_gateway(self, messages, model=None, temperature=0.7, max_tokens=256,
                          session_id=None, turn_id=None, profile=None, dialogue_state=None,
-                         risk_tier=None, asr_confidence=None, timeout_s=10.0):
+                         risk_tier=None, asr_confidence=None, timeout_s=10.0, **kwargs):
             headers = {
                 "x-voiceai-session-id": session_id or "sess_test",
                 "x-voiceai-turn-id": str(turn_id or "1"),

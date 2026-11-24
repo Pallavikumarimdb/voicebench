@@ -228,18 +228,20 @@ class LLMClient:
         Routes to LLM Gateway when LLM_GATEWAY_URL is configured; legacy path otherwise.
         """
         if self.gateway_url:
-            return self.call_gateway(
-                messages=messages,
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                session_id=session_id,
-                turn_id=turn_id,
-                risk_tier=risk_tier,
-                dialogue_state=dialogue_state,
-                json_schema=json_schema,
-                timeout_s=timeout_s
-            )
+            kwargs = {
+                "messages": messages,
+                "model": model,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "session_id": session_id,
+                "turn_id": turn_id,
+                "risk_tier": risk_tier,
+                "dialogue_state": dialogue_state,
+                "timeout_s": timeout_s
+            }
+            if json_schema is not None:
+                kwargs["json_schema"] = json_schema
+            return self.call_gateway(**kwargs)
 
         t_start = time.perf_counter()
         if provider == "openai":
