@@ -84,7 +84,16 @@ class StubAdapter(BaseAdapter):
         delay_ms = self.slow_ttft_delay_ms if self.error_mode == "slow_ttft" else self.ttft_ms
         await asyncio.sleep(delay_ms / 1000.0)
 
-        tokens = self.scripted_tokens or self.default_tokens
+        if request.json_schema and not self.scripted_tokens:
+            import json as _json
+            tokens = [_json.dumps({
+                "intent": "greet",
+                "next_state": "verify_identity",
+                "utterance": "お電話ありがとうございます。田中様でいらっしゃいますでしょうか。",
+                "tool_calls": []
+            }, ensure_ascii=False)]
+        else:
+            tokens = self.scripted_tokens or self.default_tokens
         full_text = "".join(tokens)
         t_end = time.monotonic()
 
@@ -115,7 +124,16 @@ class StubAdapter(BaseAdapter):
         initial_delay = self.slow_ttft_delay_ms if self.error_mode == "slow_ttft" else self.ttft_ms
         await asyncio.sleep(initial_delay / 1000.0)
 
-        tokens = self.scripted_tokens or self.default_tokens
+        if request.json_schema and not self.scripted_tokens:
+            import json as _json
+            tokens = [_json.dumps({
+                "intent": "greet",
+                "next_state": "verify_identity",
+                "utterance": "お電話ありがとうございます。田中様でいらっしゃいますでしょうか。",
+                "tool_calls": []
+            }, ensure_ascii=False)]
+        else:
+            tokens = self.scripted_tokens or self.default_tokens
         tokens_in = sum(len(m.get("content", "")) for m in request.messages)
         total_out = 0
 

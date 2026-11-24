@@ -148,6 +148,80 @@ export interface BrainResponse {
   metrics: BrainMetrics;
 }
 
+// Plan 1 Section 6 P3-T2: Constrained Decoding Brain Turn Schema v1
+export type BrainTurnIntent =
+  // Generic & Shared
+  | 'greet'
+  | 'confirm_identity'
+  | 'deny_identity'
+  | 'provide_dob'
+  | 'request_agent_handoff'
+  | 'close_call'
+  | 'clarification'
+  // Collections
+  | 'disclose_balance'
+  | 'inquire_situation'
+  | 'propose_payment_plan'
+  | 'accept_terms'
+  | 'request_installments'
+  | 'claim_hardship'
+  | 'claim_already_paid'
+  | 'request_stop_contact'
+  | 'third_party_notice'
+  // Screening
+  | 'describe_experience'
+  | 'confirm_qualification'
+  | 'provide_availability'
+  | 'agree_schedule'
+  // KYC
+  | 'submit_document'
+  | 'confirm_address'
+  | 'provide_info'
+  // Custom
+  | 'inquire'
+  | 'confirm'
+  | 'escalate';
+
+export type BrainTurnNextState =
+  // Collections states
+  | 'greet'
+  | 'verify_identity'
+  | 'disclose'
+  | 'discover'
+  | 'negotiate'
+  | 'capture_promise'
+  | 'close'
+  | 'third_party'
+  | 'stop_contact'
+  | 'escalate_human'
+  | 'dispute_or_paid'
+  // Screening states
+  | 'experience_inquiry'
+  | 'qualification_check'
+  | 'availability_check'
+  | 'schedule_interview'
+  // KYC states
+  | 'document_verification'
+  | 'address_confirmation'
+  | 'risk_assessment'
+  | 'kyc_approved'
+  // Custom states
+  | 'inquiry'
+  | 'action'
+  | 'resolve';
+
+export interface BrainToolCall {
+  name: string;
+  arguments: Record<string, any>;
+}
+
+export interface BrainTurnV1 {
+  intent: BrainTurnIntent;
+  next_state: BrainTurnNextState;
+  utterance: string;
+  tool_calls?: BrainToolCall[];
+}
+
 // Agent streaming and voice message types
 export interface AgentTextMessage {
   type: 'agent_text';

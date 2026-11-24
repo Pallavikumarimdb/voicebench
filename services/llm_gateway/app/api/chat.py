@@ -48,6 +48,8 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 256
     top_p: Optional[float] = 1.0
     backend: Optional[str] = None  # explicit override for tests / routing
+    response_format: Optional[Dict[str, Any]] = None
+    json_schema: Optional[Dict[str, Any]] = None
 
 
 from ..router.engine import RoutingInput, RoutingDecision, evaluate_routing_rule
@@ -162,13 +164,18 @@ async def stream_chat_generator(
         backend=backend_name
     )
 
+    target_schema = req.json_schema
+    if not target_schema and req.response_format and req.response_format.get("type") == "json_schema":
+        target_schema = req.response_format.get("json_schema", {}).get("schema")
+
     adapter = registry.get(backend_name)
     adapter_req = AdapterRequest(
         model=req.model,
         messages=[{"role": m.role, "content": m.content} for m in req.messages],
         temperature=req.temperature or 0.7,
         max_tokens=req.max_tokens or 256,
-        stream=True
+        stream=True,
+        json_schema=target_schema
     )
 
     fallback_chain: List[Dict[str, str]] = []
@@ -408,13 +415,18 @@ async def chat_completions(
         backend=backend_name
     )
 
+    target_schema = req.json_schema
+    if not target_schema and req.response_format and req.response_format.get("type") == "json_schema":
+        target_schema = req.response_format.get("json_schema", {}).get("schema")
+
     adapter = registry.get(backend_name)
     adapter_req = AdapterRequest(
         model=req.model,
         messages=[{"role": m.role, "content": m.content} for m in req.messages],
         temperature=req.temperature or 0.7,
         max_tokens=req.max_tokens or 256,
-        stream=False
+        stream=False,
+        json_schema=target_schema
     )
 
     fallback_chain: List[Dict[str, str]] = []

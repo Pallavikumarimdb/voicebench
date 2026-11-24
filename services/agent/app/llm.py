@@ -131,6 +131,7 @@ class LLMClient:
         dialogue_state: Optional[str] = None,
         risk_tier: Optional[str] = None,
         asr_confidence: Optional[float] = None,
+        json_schema: Optional[Dict[str, Any]] = None,
         timeout_s: float = 10.0
     ) -> Dict[str, Any]:
         """
@@ -163,6 +164,8 @@ class LLMClient:
             "max_tokens": max_tokens,
             "stream": False
         }
+        if json_schema:
+            payload["json_schema"] = json_schema
 
         t_start = time.perf_counter()
         import urllib.request
@@ -186,6 +189,14 @@ class LLMClient:
         tokens_out = usage.get("completion_tokens", len(text))
         x_voiceai = data.get("x_voiceai", {"tier": "t1_local"})
 
+        # Plan 1 P3-T2: parse brain_turn_v1 structure if available
+        brain_turn = None
+        try:
+            from .protocol import BrainTurnV1
+            brain_turn = BrainTurnV1.model_validate_json(text)
+        except Exception:
+            brain_turn = None
+
         self.tracker.record(tokens_in, tokens_out, f"gateway:{target_model}")
         return {
             "text": text,
@@ -194,7 +205,8 @@ class LLMClient:
             "model": f"gateway:{target_model}",
             "latency_ms": round(t_elapsed, 2),
             "cached": False,
-            "x_voiceai": x_voiceai
+            "x_voiceai": x_voiceai,
+            "brain_turn": brain_turn
         }
 
     def complete_with(
@@ -208,7 +220,8 @@ class LLMClient:
         session_id: Optional[str] = None,
         turn_id: Optional[str] = None,
         risk_tier: Optional[str] = None,
-        dialogue_state: Optional[str] = None
+        dialogue_state: Optional[str] = None,
+        json_schema: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Routed completion with measured latency and real token counts.
@@ -224,6 +237,7 @@ class LLMClient:
                 turn_id=turn_id,
                 risk_tier=risk_tier,
                 dialogue_state=dialogue_state,
+                json_schema=json_schema,
                 timeout_s=timeout_s
             )
 
