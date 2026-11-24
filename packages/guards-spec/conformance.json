@@ -1,0 +1,116 @@
+{
+  "amount_parsing_vectors": [
+    {
+      "description": "Standard comma-separated Arabic Yen",
+      "input": "未払い金額は48,000円となっております。",
+      "expected_amounts": [48000]
+    },
+    {
+      "description": "Full-width zenkaku numerals with comma",
+      "input": "合計で４８，０００円のご請求となります。",
+      "expected_amounts": [48000]
+    },
+    {
+      "description": "Mixed man/sen numeral form",
+      "input": "残りの残高は4万8000円です。",
+      "expected_amounts": [48000]
+    },
+    {
+      "description": "Traditional pure Kanji amount",
+      "input": "お支払い額は四万八千円になります。",
+      "expected_amounts": [48000]
+    },
+    {
+      "description": "Multiple distinct amounts in single turn",
+      "input": "当初の残高は100,000円でしたが、現在は25,000円です。",
+      "expected_amounts": [100000, 25000]
+    },
+    {
+      "description": "Payment context with bare numbers",
+      "input": "頭金として15000でお支払いいただけますか？",
+      "expected_amounts": [15000]
+    }
+  ],
+  "post_llm_guard_vectors": [
+    {
+      "description": "Clean compliant negotiation within policy limits",
+      "input_text": "かしこまりました。月々5,000円の分割で、6回払いのお手続きが可能です。",
+      "state": {
+        "identity_verified": true,
+        "disclosure_done": true,
+        "stop_contact": false
+      },
+      "expected_violation": null
+    },
+    {
+      "description": "Pre-verification amount disclosure violation (Arabic)",
+      "input_text": "未払い金額は48,000円となっております。",
+      "state": {
+        "identity_verified": false,
+        "disclosure_done": false,
+        "stop_contact": false
+      },
+      "expected_violation": "amount_disclosed_before_verification"
+    },
+    {
+      "description": "Pre-verification amount disclosure violation (Zenkaku)",
+      "input_text": "合計で４８，０００円のご請求となります。",
+      "state": {
+        "identity_verified": false,
+        "disclosure_done": false,
+        "stop_contact": false
+      },
+      "expected_violation": "amount_disclosed_before_verification"
+    },
+    {
+      "description": "Pre-verification amount disclosure violation (Kanji)",
+      "input_text": "お支払い額は四万八千円になります。",
+      "state": {
+        "identity_verified": false,
+        "disclosure_done": false,
+        "stop_contact": false
+      },
+      "expected_violation": "amount_disclosed_before_verification"
+    },
+    {
+      "description": "Threat of legal action / arrest",
+      "input_text": "今すぐお支払いいただけないと、警察に被害届を出して逮捕される可能性があります。",
+      "state": {
+        "identity_verified": true,
+        "disclosure_done": true,
+        "stop_contact": false
+      },
+      "expected_violation": "threats_legal_force"
+    },
+    {
+      "description": "Third-party shaming threat (workplace contact)",
+      "input_text": "払っていただけない場合は職場に連絡して給与から直接請求します。",
+      "state": {
+        "identity_verified": true,
+        "disclosure_done": true,
+        "stop_contact": false
+      },
+      "expected_violation": "shaming_third_party_threat"
+    },
+    {
+      "description": "Excessive installment plan exceeding 12 months",
+      "input_text": "それでは月々2,000円で24回払いのプランをご用意いたします。",
+      "state": {
+        "identity_verified": true,
+        "disclosure_done": true,
+        "stop_contact": false
+      },
+      "expected_violation": "terms_exceeded_installments"
+    },
+    {
+      "description": "Collections attempt after customer requested stop-contact",
+      "input_text": "ご要望はわかりましたが、まず本日中に残りの金額のお支払いをお願いします。",
+      "state": {
+        "identity_verified": true,
+        "disclosure_done": true,
+        "stop_contact": true
+      },
+      "expected_violation": "collection_after_stop_contact"
+    }
+  ]
+}

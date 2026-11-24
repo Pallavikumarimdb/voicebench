@@ -14,7 +14,7 @@ from .clock import Clock
 RULES_FILE = os.path.join(os.path.dirname(__file__), "rules.yaml")
 
 # Japanese Full-Width to Half-Width translation
-ZENKAKU_DIGITS = str.maketrans("０１２３４５６７８９", "0123456789")
+ZENKAKU_DIGITS = str.maketrans("０１２３４５６７８９，", "0123456789,")
 
 KANJI_NUMS = {
     '〇': 0, '一': 1, '二': 2, '三': 3, '四': 4,
@@ -35,22 +35,22 @@ def parse_japanese_amount(text: str) -> List[int]:
     norm_text = normalize_japanese_numbers(text)
     amounts = []
 
-    # 1. Arabic numerals before '円': e.g., 48,000円 or 48000円
-    for m in re.finditer(r'([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\s*円', norm_text):
-        num_str = m.group(1).replace(",", "")
-        amounts.append(int(num_str))
-
-    # 2. Mixed numerals like 4万8千円 or 4万8000円
-    for m in re.finditer(r'([0-9]+)\s*万\s*([0-9]+)?\s*(?:千)?\s*円?', norm_text):
+    # 1. Mixed numerals like 4万8千円, 4万8000円, or 4万円
+    for m in re.finditer(r'([0-9]+)\s*万\s*(?:([0-9]+)\s*千|([0-9]+))?\s*円?', norm_text):
         man = int(m.group(1)) * 10000
-        sen = int(m.group(2)) * 1000 if m.group(2) else 0
-        amounts.append(man + sen)
+        sen = 0
+        if m.group(2):
+            sen = int(m.group(2)) * 1000
+        elif m.group(3):
+            sen = int(m.group(3))
+        total = man + sen
+        if total > 0:
+            amounts.append(total)
 
-    # 3. Pure kanji amounts like 一万二千円 or 四万八千円
+    # 2. Pure kanji amounts like 一万二千円 or 四万八千円
     kanji_pattern = r'([一二三四五六七八九十百千万]+)\s*円'
     for m in re.finditer(kanji_pattern, norm_text):
         raw_kanji = m.group(1)
-        # Parse kanji number
         val = 0
         temp = 0
         section = 0
@@ -70,10 +70,21 @@ def parse_japanese_amount(text: str) -> List[int]:
         if val > 0:
             amounts.append(val)
 
-    # 4. Bare large numbers with context of payment (e.g. "48000でお支払い")
-    for m in re.finditer(r'(?:お支払い|金額|残高|ご請求|合計|頭金)\D{0,6}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})', norm_text):
+    # 3. Arabic numerals directly before '円': e.g., 48,000円 or 48000円 (not preceded by 万)
+    # Mask out already processed '万...円' spans to avoid re-matching trailing digits
+    text_without_man = re.sub(r'[0-9]+\s*万\s*(?:[0-9]+\s*千|[0-9]+)?\s*円?', ' ', norm_text)
+    for m in re.finditer(r'([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\s*円', text_without_man):
         num_str = m.group(1).replace(",", "")
-        amounts.append(int(num_str))
+        num = int(num_str)
+        if num > 0:
+            amounts.append(num)
+
+    # 4. Bare large numbers with context of payment (e.g. "48000でお支払い")
+    for m in re.finditer(r'(?:お支払い|金額|残高|ご請求|合計|頭金)\D{0,6}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})', text_without_man):
+        num_str = m.group(1).replace(",", "")
+        num = int(num_str)
+        if num > 0:
+            amounts.append(num)
 
     return list(set(amounts))
 
