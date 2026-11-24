@@ -237,6 +237,28 @@ export class ApiClient {
   async getBenchmarks(): Promise<any> {
     return fetchJson('/api/results/benchmarks');
   }
+
+  /** Plan 1 P8-T1: Get all policy profiles */
+  async getPolicies(): Promise<{ policies: Array<{ id: string; filename: string; content: string }> }> {
+    return fetchJson('/api/policies');
+  }
+
+  /** Plan 1 P8-T1: Save policy profile with admin authentication */
+  async savePolicy(id: string, content: string, adminToken = 'dev-admin-secret-token', note?: string, weakensCompliance = false): Promise<any> {
+    return fetchJson(`/api/policies/${encodeURIComponent(id)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
+      body: JSON.stringify({
+        content,
+        who: 'agent-studio',
+        note: note || 'Updated via Agent Studio Policy Editor',
+        weakens_compliance: weakensCompliance
+      })
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
