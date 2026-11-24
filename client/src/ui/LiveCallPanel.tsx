@@ -4,6 +4,7 @@ import { GatewayMessage, AgentConfig } from '@voice/protocol';
 import { Captions, CaptionEntry } from './Captions';
 import { LatencyHUD } from './LatencyHUD';
 import { PageHeader, Badge } from './primitives.tsx';
+import { DegradedModeBanner, OperatingTier } from './DegradedModeBanner.tsx';
 
 export type DomainType = 'collections' | 'screening' | 'kyc' | 'custom';
 export type AgentLanguage = 'ja' | 'en';
@@ -157,6 +158,7 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
   const [screeningQualified, setScreeningQualified] = useState(false);
   const [screeningStage, setScreeningStage] = useState('intro');
   const [kycResolved, setKycResolved] = useState(false);
+  const [operatingTier, setOperatingTier] = useState<OperatingTier>('local_server');
 
   const [eventsFeed, setEventsFeed] = useState<Array<{ type: string; rule?: string; text?: string; time: string }>>([]);
   const [lastCompletedSessionId, setLastCompletedSessionId] = useState<string | null>(null);
@@ -468,6 +470,14 @@ export const LiveCallPanel: React.FC<LiveCallPanelProps> = ({ onInspectCall }) =
             )}
           </>
         }
+      />
+
+      <DegradedModeBanner
+        currentTier={operatingTier}
+        onRetryConnection={() => {
+          runHealthCheck();
+          setOperatingTier('local_server');
+        }}
       />
 
       <div className="card card-pad" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
