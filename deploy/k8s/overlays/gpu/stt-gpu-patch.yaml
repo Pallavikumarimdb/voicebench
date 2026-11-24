@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stt-deployment
+  namespace: voiceai
+spec:
+  template:
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: gpu-pool
+        accelerator: nvidia-tesla-t4
+      containers:
+        - name: stt
+          env:
+            - name: STT_DEVICE
+              value: "cuda"
+            - name: STT_COMPUTE_TYPE
+              value: "float16"
+          resources:
+            limits:
+              nvidia.com/gpu: 1

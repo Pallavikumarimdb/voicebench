@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: voiceai-config
+  namespace: voiceai
+data:
+  PORT: "8443"
+  HOST: "0.0.0.0"
+  MAX_BUFFERED_BYTES: "524288"
+  STT_SERVICE_URL: "ws://stt-service:8001/stream"
+  MT_SERVICE_URL: "http://mt-service:8002/translate"
+  AGENT_SERVICE_URL: "http://agent-service:8003/turn"
+  TTS_SERVICE_URL: "http://tts-service:8004/synthesize"
+  LLM_GATEWAY_URL: "http://llm-gateway-service:8005"
+  LLM_GATEWAY_PROFILE: "default"
+  LLM_BACKEND_DEFAULT: "stub"
+  STT_ENGINE: "sherpa-onnx"
+  SHERPA_MODEL: "sense-voice"
+  STT_DEVICE: "cpu"
+  STT_COMPUTE_TYPE: "int8"

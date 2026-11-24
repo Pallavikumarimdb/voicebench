@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tts-deployment
+  namespace: voiceai
+  labels:
+    app: voice-tts
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: voice-tts
+  template:
+    metadata:
+      labels:
+        app: voice-tts
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: tts
+          image: voiceai/tts:latest
+          ports:
+            - containerPort: 8004
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8004
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8004
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tts-service
+  namespace: voiceai
+spec:
+  selector:
+    app: voice-tts
+  ports:
+    - port: 8004
+      targetPort: 8004
