@@ -29,6 +29,17 @@ async def readyz():
     }
 
 
+@router.post("/reload")
+async def reload_policies():
+    """Reloads all policy YAML files from disk dynamically without restarting gateway."""
+    config.reload_all()
+    return {
+        "status": "reloaded",
+        "loaded_policies": list(config.policies.keys()),
+        "policy_hashes": config.policy_hashes
+    }
+
+
 @router.get("/metrics")
 async def metrics():
     data = generate_latest()

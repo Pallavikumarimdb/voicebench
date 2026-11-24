@@ -89,9 +89,10 @@ const PERSONAS_DIR = path.resolve(REPO_ROOT, 'eval/agent/personas');
 const LABELING_DIR = path.resolve(REPO_ROOT, 'eval/agent/labeling');
 const BENCHMARKS_DIR = path.resolve(REPO_ROOT, 'docs/benchmarks');
 export const RECORDINGS_DIR = path.resolve(REPO_ROOT, 'services/agent/recordings');
+export const POLICIES_DIR = path.resolve(REPO_ROOT, 'config/policies');
 
 // Whitelisted directories to prevent path traversal
-const ALLOWED_DIRS = [AUDIT_DIR, RESULTS_DIR, PERSONAS_DIR, LABELING_DIR, RECORDINGS_DIR, BENCHMARKS_DIR];
+const ALLOWED_DIRS = [AUDIT_DIR, RESULTS_DIR, PERSONAS_DIR, LABELING_DIR, RECORDINGS_DIR, BENCHMARKS_DIR, POLICIES_DIR];
 
 export function isPathSafe(filePath: string): boolean {
   const resolved = path.resolve(filePath);
@@ -1676,6 +1677,106 @@ export async function handleDataApi(
     });
     res.end(twiml);
     return true;
+  }
+
+  // 23. GET /api/policies - List all available policy profiles
+  if (req.method === 'GET' && pathname === '/api/policies') {
+    try {
+      if (!fs.existsSync(POLICIES_DIR)) {
+        sendJson(res, 200, { policies: [] }, req);
+        return true;
+      }
+      const files = fs.readdirSync(POLICIES_DIR).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+      const policies = files.map(file => {
+        const id = file.replace(/\.ya?ml$/, '');
+        const content = fs.readFileSync(path.join(POLICIES_DIR, file), 'utf-8');
+        return { id, filename: file, content };
+      });
+      sendJson(res, 200, { policies }, req);
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
+  }
+
+  // 24. GET /api/policies/:id - Read single policy profile
+  const getPolicyMatch = pathname.match(/^\/api\/policies\/([a-zA-Z0-9_\-]+)$/);
+  if (req.method === 'GET' && getPolicyMatch) {
+    const policyId = getPolicyMatch[1];
+    const filePath = path.join(POLICIES_DIR, `${policyId}.yaml`);
+    if (!isPathSafe(filePath) || !fs.existsSync(filePath)) {
+      sendJson(res, 404, { error: `Policy ${policyId} not found` }, req);
+      return true;
+    }
+    const content = fs.readFileSync(filePath, 'utf-8');
+    sendJson(res, 200, { id: policyId, content }, req);
+    return true;
+  }
+
+  // 25. POST /api/policies/:id - Update policy profile (Auth token required, atomic write, last-known-good, LLM reload)
+  const postPolicyMatch = pathname.match(/^\/api\/policies\/([a-zA-Z0-9_\-]+)$/);
+  if (req.method === 'POST' && postPolicyMatch) {
+    const policyId = postPolicyMatch[1];
+    const adminToken = process.env.ADMIN_TOKEN || 'dev-admin-secret-token';
+    const authHeader = req.headers['authorization'] || req.headers['x-admin-token'];
+    const bearer = typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+
+    if (bearer !== adminToken) {
+      sendJson(res, 401, { error: 'Unauthorized: valid admin token required to modify policies' }, req);
+      return true;
+    }
+
+    try {
+      const body = await parseJsonBody(req);
+      const rawYaml = body.content;
+      if (!rawYaml || typeof rawYaml !== 'string') {
+        sendJson(res, 400, { error: 'Policy content (YAML string) is required' }, req);
+        return true;
+      }
+
+      const filePath = path.join(POLICIES_DIR, `${policyId}.yaml`);
+      if (!isPathSafe(filePath)) {
+        sendJson(res, 403, { error: 'Access denied: unsafe path' }, req);
+        return true;
+      }
+
+      // Check for last-known-good backup
+      const lkgPath = path.join(POLICIES_DIR, `${policyId}.lkg.yaml`);
+      if (fs.existsSync(filePath)) {
+        fs.copyFileSync(filePath, lkgPath);
+      }
+
+      // Atomic write using temp file
+      const tempPath = path.join(POLICIES_DIR, `${policyId}.tmp.${Date.now()}`);
+      fs.writeFileSync(tempPath, rawYaml, 'utf-8');
+      fs.renameSync(tempPath, filePath);
+
+      // Append to policy change log (AUDIT_DIR/policy_changes.jsonl)
+      const policyLogPath = path.join(AUDIT_DIR, 'policy_changes.jsonl');
+      const changeEntry = {
+        ts: new Date().toISOString(),
+        who: body.who || 'admin-api',
+        policy_id: policyId,
+        note: body.note || 'Updated via Policy API',
+        weakens_compliance: Boolean(body.weakens_compliance)
+      };
+      fs.appendFileSync(policyLogPath, JSON.stringify(changeEntry) + '\n', 'utf-8');
+
+      // Trigger hot-reload on LLM Gateway if reachable
+      try {
+        const llmGwUrl = process.env.LLM_GATEWAY_URL || 'http://127.0.0.1:8005';
+        const reloadReq = http.request(`${llmGwUrl}/reload`, { method: 'POST', timeout: 1500 });
+        reloadReq.on('error', () => {});
+        reloadReq.end();
+      } catch {}
+
+      sendJson(res, 200, { success: true, policyId, message: 'Policy profile updated and LLM gateway reloaded' }, req);
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message }, req);
+      return true;
+    }
   }
 
   return false;
