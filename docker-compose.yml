@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: voice-client
+    ports:
+      - "3001:80"
+    depends_on:
+      - gateway
+    networks:
+      - voice-net
+    restart: unless-stopped
+
   gateway:
     build:
       context: ./gateway
