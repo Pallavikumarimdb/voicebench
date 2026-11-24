@@ -355,6 +355,31 @@ Tampering with, inserting, or deleting any historical turn, timestamp, or score 
 
 ---
 
+## 🥊 Build vs Pipecat / Vapi / Retell
+
+The real-time streaming audio loop (VAD + WebSockets + TTS) is increasingly commoditized. Commercial managed providers (Vapi, Retell) and open-source streaming harnesses (Pipecat) offer audio routing, but enterprise regulated deployments require architectural boundaries that managed wrappers cannot provide:
+
+| Dimension | VoiceAI Infra | Pipecat | Commercial Managed (Vapi / Retell) |
+| :--- | :--- | :--- | :--- |
+| **Deterministic Compliance Guards** | **Enforced outside prompt** on every turn & tier (Zenkaku, Kanji, amounts, calling hours, third-party disclosure) | Developer responsibility (typically in system prompt) | System prompt or external webhook guard with network roundtrip latency |
+| **Tamper-Evident Audit Trail** | **Cryptographic SHA-256 hash-chain with Ed25519 signed chain head** recording full routing decisions & policy versions | None built-in | Proprietary cloud call logs without cryptographic non-repudiation |
+| **Offline & Degraded Edge Tier** | **Sub-100ms browser WebGPU + WebAssembly** with identical guard conformance (`@voice/guards-spec`) | Server-centric pipeline | Closed cloud only (requires continuous active internet connection) |
+| **Deployment Target** | **CPU-first local pipeline** (RTF $< 0.06$ on standard Intel/AMD nodes, optional GPU overlay) | Depends on self-hosted services | Closed proprietary cloud infrastructure |
+| **Public Inference Benchmarks** | **Reproducible B1–B7 benchmark suite** with measured latencies, CIs, Pareto frontiers, and cost models | Community examples | Published marketing metrics |
+
+---
+
+## ⚠️ Limitations & Non-Claims
+
+To ensure complete transparency and scientific rigor, the following operational boundaries are explicitly documented:
+1. **Synthetic Data Only**: All contact profiles, financial records, names, phone numbers, and transcripts in this repository and its evaluation suites are strictly synthetic.
+2. **Telephony Bridge**: Telephony support uses simulated SIP/Twilio Media Stream WebSocket protocols; production carrier-grade PSTN trunking requires external SIP trunk provisioning.
+3. **Simulation vs Cluster Benchmarks**: P6 autoscaling dynamics are explicitly validated via 24-hour diurnal load simulations (`tools/autoscale_sim.py`) derived from measured per-pod CPU capacities.
+4. **Audit Anchoring**: Sequential SHA-256 hash chaining with Ed25519 signing guarantees local tamper-evidence and non-repudiation. Enterprise legal admissibility requires periodic external anchoring (e.g. RFC 3161 TSA or transparency ledger).
+5. **Pre-Disclosure Conformance**: Japanese currency normalization is guaranteed across Kanji, Zenkaku, and Arabic forms; custom regional dialects must be evaluated against localized test vectors.
+
+---
+
 ## 📁 Repository Structure
 
 ```text
