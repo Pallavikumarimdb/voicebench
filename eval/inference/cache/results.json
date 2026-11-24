@@ -1,0 +1,72 @@
+{
+  "baseline_no_cache": {
+    "total_calls": 100,
+    "total_turns": 460,
+    "hard_fails": 0,
+    "hard_fail_rate_pct": 0.0,
+    "hard_fail_wilson_ci": [
+      0.0,
+      3.7
+    ],
+    "ttft_p50_ms": 1236.72,
+    "ttft_p90_ms": 1478.84,
+    "ttft_p95_ms": 1505.77,
+    "ttft_p99_ms": 1534.47,
+    "ttft_mean_ms": 1263.56,
+    "ttft_bootstrap_ci_ms": [
+      1250.08,
+      1277.45
+    ],
+    "turn_lat_p50_ms": 1276.72,
+    "turn_lat_p95_ms": 1545.77,
+    "tier_breakdown": {
+      "t0_fast_path": 0,
+      "t0_cache": 0,
+      "t1_prefix_cached": 0,
+      "t1_local_cold": 460
+    },
+    "t0_fast_path_pct": 0.0,
+    "t0_response_cache_pct": 0.0,
+    "prefix_cache_pct": 0.0,
+    "overall_acceleration_pct": 0.0,
+    "total_tokens_in": 271910,
+    "total_tokens_out": 19640,
+    "total_cached_tokens": 0,
+    "avg_uncached_tokens_per_turn": 591.1
+  },
+  "voiceai_full_cache": {
+    "total_calls": 100,
+    "total_turns": 460,
+    "hard_fails": 0,
+    "hard_fail_rate_pct": 0.0,
+    "hard_fail_wilson_ci": [
+      0.0,
+      3.7
+    ],
+    "ttft_p50_ms": 294.49,
+    "ttft_p90_ms": 537.06,
+    "ttft_p95_ms": 558.18,
+    "ttft_p99_ms": 589.92,
+    "ttft_mean_ms": 309.84,
+    "ttft_bootstrap_ci_ms": [
+      294.01,
+      325.75
+    ],
+    "turn_lat_p50_ms": 329.49,
+    "turn_lat_p95_ms": 593.18,
+    "tier_breakdown": {
+      "t0_fast_path": 40,
+      "t0_cache": 0,
+      "t1_prefix_cached": 420,
+      "t1_local_cold": 0
+    },
+    "t0_fast_path_pct": 8.7,
+    "t0_response_cache_pct": 0.0,
+    "prefix_cache_pct": 91.3,
+    "overall_acceleration_pct": 100.0,
+    "total_tokens_in": 251990,
+    "total_tokens_out": 15700,
+    "total_cached_tokens": 189000,
+    "avg_uncached_tokens_per_turn": 136.9
+  }
+}
