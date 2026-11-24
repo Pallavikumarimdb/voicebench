@@ -329,8 +329,9 @@ class GeneralizedVoiceAgent:
             "tokensOut": 0,
             "model": f"template_{domain}_{language}",
         }
-        if llm_provider in ("local", "openai"):
-            reply_text, metrics = self._phrase_with_llm(
+        x_voiceai = None
+        if llm_provider in ("local", "openai", "gateway"):
+            reply_text, metrics, x_voiceai = self._phrase_with_llm(
                 ctx, reply_text, turn_events, llm_provider, llm_model
             )
 
@@ -347,12 +348,15 @@ class GeneralizedVoiceAgent:
                 "stage": state.get("stage", "active"),
             })
 
-        return {
+        result = {
             "text": reply_text,
             "events": events,
             "state": state,
             "metrics": metrics,
         }
+        if x_voiceai:
+            result["x_voiceai"] = x_voiceai
+        return result
 
     # Claims the template did NOT make: the LLM must not introduce these.
     _FORBIDDEN_NEW_CLAIMS = (
@@ -369,8 +373,8 @@ class GeneralizedVoiceAgent:
         turn_events: List[Dict[str, Any]],
         provider: str,
         model: Optional[str],
-    ) -> tuple[str, Dict[str, Any]]:
-        """Restyle the template reply via LLM. Returns (reply, metrics)."""
+    ) -> tuple[str, Dict[str, Any], Optional[Dict[str, Any]]]:
+        """Restyle the template reply via LLM. Returns (reply, metrics, x_voiceai)."""
         from .llm import llm_client
 
         fallback_metrics = {
@@ -411,22 +415,22 @@ class GeneralizedVoiceAgent:
             )
             text = (res.get("text") or "").strip()
             if not text or len(text) > 600:
-                return template_reply, fallback_metrics
+                return template_reply, fallback_metrics, None
             lowered = text.lower()
             template_lowered = template_reply.lower()
             for claim in self._FORBIDDEN_NEW_CLAIMS:
                 if claim.lower() in lowered and claim.lower() not in template_lowered:
-                    return template_reply, fallback_metrics
+                    return template_reply, fallback_metrics, None
             return text, {
                 "llmMs": res.get("latency_ms", 0.0),
                 "ttftMs": res.get("latency_ms", 0.0),
                 "tokensIn": res.get("tokens_in", 0),
                 "tokensOut": res.get("tokens_out", 0),
                 "model": res.get("model", f"{provider}:unknown"),
-            }
+            }, res.get("x_voiceai")
         except Exception as e:
             print(f"[GeneralizedAgent] LLM phrasing skipped ({provider}): {e}")
-            return template_reply, fallback_metrics
+            return template_reply, fallback_metrics, None
 
     # ─── Screening ────────────────────────────────────────────────────────────
 

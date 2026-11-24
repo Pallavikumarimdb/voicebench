@@ -6,6 +6,7 @@ services:
       context: ./gateway
       dockerfile: Dockerfile
     container_name: voice-gateway
+    profiles: ["default", "stub-llm"]
     ports:
       - "8443:8443"
     environment:
@@ -30,8 +31,11 @@ services:
       context: ./services/agent
       dockerfile: Dockerfile
     container_name: voice-agent
+    profiles: ["default", "stub-llm"]
     ports:
       - "8003:8003"
+    environment:
+      - LLM_GATEWAY_URL=http://llm-gateway:8005
     networks:
       - voice-net
     restart: unless-stopped
@@ -41,12 +45,14 @@ services:
       context: ./services/llm_gateway
       dockerfile: Dockerfile
     container_name: voice-llm-gateway
+    profiles: ["default", "stub-llm"]
     ports:
       - "8005:8005"
     environment:
       - LLM_GATEWAY_HOST=0.0.0.0
       - LLM_GATEWAY_PORT=8005
       - LLM_GATEWAY_PROFILE=default
+      - LLM_BACKEND_DEFAULT=stub
     volumes:
       - ./config:/config:ro
     networks:
