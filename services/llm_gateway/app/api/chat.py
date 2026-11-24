@@ -8,6 +8,7 @@ import time
 import json
 import uuid
 import httpx
+import hashlib
 import asyncio
 from typing import List, Dict, Any, Optional, AsyncGenerator
 from fastapi import APIRouter, Request, Header, HTTPException
@@ -29,9 +30,11 @@ from ..metrics import (
     voiceai_llm_requests_total,
     voiceai_llm_ttft_seconds,
     voiceai_fallback_total,
-    voiceai_schema_retry_total
+    voiceai_schema_retry_total,
+    voiceai_cache_total
 )
 from ..cancellation import cancellation_manager, ActiveRequest
+from ..cache.response_cache import response_cache
 
 router = APIRouter()
 
@@ -108,7 +111,8 @@ def create_decision_record(
     fallback_chain: Optional[List[Dict[str, str]]] = None,
     rule_id: Optional[str] = None,
     reason_code: Optional[str] = None,
-    constraint_mode: Optional[str] = None
+    constraint_mode: Optional[str] = None,
+    cache: str = "miss"
 ) -> Dict[str, Any]:
     """Generates the Section 5.2 x_voiceai decision record."""
     policy_ver = config.get_policy_version(profile)
@@ -130,7 +134,7 @@ def create_decision_record(
         "rule_id": matched_rule,
         "reason_code": matched_reason,
         "policy_version": policy_ver,
-        "cache": "miss",
+        "cache": cache,
         "constraint_mode": matched_constraint,
         "fallback_chain": fallback_chain or [],
         "ttft_ms": max(0, int(ttft_ms)),
@@ -359,17 +363,58 @@ async def chat_completions(
     x_voiceai_risk_tier: Optional[str] = Header("low"),
     x_voiceai_asr_confidence: Optional[str] = Header(None),
     x_voiceai_utterance_tokens: Optional[str] = Header(None),
+    x_voiceai_tenant_id: Optional[str] = Header("default_tenant"),
+    x_voiceai_persona_id: Optional[str] = Header(None),
 ):
     session_id = x_voiceai_session_id or "sess_default"
     turn_id = x_voiceai_turn_id or "turn_0"
     profile = x_voiceai_profile or config.default_profile
     risk_tier = x_voiceai_risk_tier or "low"
+    tenant_id = x_voiceai_tenant_id or "default_tenant"
+    persona_id = x_voiceai_persona_id or profile
+    state_id = x_voiceai_dialogue_state or "default_state"
 
     trace_context.set({
         "trace_id": str(uuid.uuid4())[:8],
         "session_id": session_id,
         "turn_id": turn_id
     })
+
+    # Plan 1 P4-T4: Exact-hash response cache check
+    state_mutated = response_cache.check_session_state(session_id, state_id)
+    prompt_text = ""
+    for m in reversed(req.messages):
+        if m.role == "user":
+            prompt_text = m.content
+            break
+    history_messages = [m.model_dump() if hasattr(m, 'model_dump') else {"role": m.role, "content": m.content} for m in req.messages[:-1]]
+    history_hash = response_cache.compute_history_hash(history_messages)
+    schema_hash = hashlib.sha256(json.dumps(req.json_schema or req.response_format or {}, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+    cache_key = response_cache.compute_key(tenant_id, persona_id, state_id, prompt_text, history_hash, schema_hash)
+
+    # Cache lookup (bypassed if streaming, state mutated, or explicit backend override provided for tests)
+    if not req.stream and not state_mutated and not req.backend:
+        cached_entry = response_cache.get(cache_key)
+        if cached_entry:
+            cached_resp = json.loads(json.dumps(cached_entry))
+            cached_resp["id"] = f"chatcmpl-cache-{uuid.uuid4().hex[:8]}"
+            cached_resp["created"] = int(time.time())
+            cached_resp["x_voiceai"]["cache"] = "hit"
+            cached_resp["x_voiceai"]["reason_code"] = "CACHE_HIT"
+            cached_resp["x_voiceai"]["tier"] = "t0_cache"
+            cached_resp["x_voiceai"]["ttft_ms"] = 1
+            if "usage" in cached_resp:
+                cached_resp["usage"].setdefault("prompt_tokens_details", {})["cached_tokens"] = cached_resp["usage"].get("prompt_tokens", 0)
+            voiceai_cache_total.labels(kind="response", result="hit").inc()
+            voiceai_llm_requests_total.labels(
+                backend="cache",
+                model=req.model,
+                tier="t0_cache",
+                status="success"
+            ).inc()
+            return JSONResponse(content=cached_resp)
+        else:
+            voiceai_cache_total.labels(kind="response", result="miss").inc()
 
     u_tokens = int(x_voiceai_utterance_tokens) if x_voiceai_utterance_tokens and x_voiceai_utterance_tokens.isdigit() else 0
     asr_conf = float(x_voiceai_asr_confidence) if x_voiceai_asr_confidence else None
@@ -567,6 +612,10 @@ async def chat_completions(
             },
             "x_voiceai": decision
         }
+
+        # Plan 1 P4-T4: Cache response for identical repeat request
+        if not req.stream and adapter_res.content:
+            response_cache.set(cache_key, response_body, tenant_id, persona_id, state_id)
 
         voiceai_llm_requests_total.labels(
             backend=backend_name,
