@@ -32,6 +32,16 @@ class AdapterRegistry:
             )
         )
 
+        # Plan 1 P2-T5: Remote large tier adapter (optional T2, works against any OpenAI-compatible endpoint)
+        t2_url = config.t2_base_url or config.openai_base_url
+        self.register(
+            "remote_large",
+            OpenAICompatibleAdapter(
+                base_url=t2_url,
+                api_key=config.t2_api_key or config.openai_api_key
+            )
+        )
+
     def register(self, name: str, adapter: BaseAdapter):
         self._adapters[name] = adapter
 

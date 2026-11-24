@@ -27,6 +27,12 @@ class GatewayConfig:
         self.openai_base_url: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         self.openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
 
+        # Plan 1 P2-T5: Optional T2 large tier (disabled by default)
+        self.t2_enabled: bool = os.getenv("LLM_T2_ENABLED", "false").lower() in ("true", "1", "yes")
+        self.t2_base_url: Optional[str] = os.getenv("T2_BASE_URL")
+        self.t2_model: str = os.getenv("T2_MODEL", "qwen2.5-7b-instruct")
+        self.t2_api_key: Optional[str] = os.getenv("T2_API_KEY")
+
         self.policies: Dict[str, Dict[str, Any]] = {}
         self.policy_hashes: Dict[str, str] = {}
         self.pricing: Dict[str, Any] = {}
@@ -52,11 +58,15 @@ class GatewayConfig:
 
     def get_policy(self, profile: Optional[str] = None) -> Dict[str, Any]:
         key = profile or self.default_profile
-        if key in self.policies:
-            return self.policies[key]
-        if "default" in self.policies:
-            return self.policies["default"]
-        return {"tiers": {"t0_fast_path": {}, "t1_local": {}}, "rules": []}
+        base = self.policies.get(key) or self.policies.get("default") or {"tiers": {"t0_fast_path": {}, "t1_local": {}}, "rules": []}
+        import copy
+        policy = copy.deepcopy(base)
+        if "tiers" in policy and "t2_large" in policy["tiers"]:
+            # T2 is enabled only when env var LLM_T2_ENABLED is true
+            policy["tiers"]["t2_large"]["enabled"] = self.t2_enabled
+            if self.t2_model:
+                policy["tiers"]["t2_large"]["model"] = self.t2_model
+        return policy
 
     def get_policy_version(self, profile: Optional[str] = None) -> str:
         key = profile or self.default_profile
