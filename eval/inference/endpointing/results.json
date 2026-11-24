@@ -7,9 +7,9 @@
     "cores_logical": 12,
     "ram_gb": 31.7,
     "python": "3.13.8",
-    "git_sha": "bc1452d5",
+    "git_sha": "10b369e8",
     "seed": 42,
-    "timestamp": "2026-11-24 11:42:41"
+    "timestamp": "2026-11-24 12:13:15"
   },
   "dataset_type": "synthetic_with_limitations",
   "dataset_limitation_note": "Synthetic mid-utterance pauses model controlled silence intervals. Real human caller hesitation in Japanese collections may exhibit higher acoustic variance and breathing artifacts.",

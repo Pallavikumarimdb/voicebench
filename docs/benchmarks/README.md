@@ -1,7 +1,7 @@
 # VoiceAI Infra: Public Inference Benchmark Suite Index
 
-**Generated:** 2026-11-24 11:57:51  
-**Git Commit:** `de72a36a`  
+**Generated:** 2026-11-24 12:13:22  
+**Git Commit:** `10b369e8`  
 **Standard:** All figures reflect empirical code-execution runs with bootstrap / Wilson confidence intervals. Zero fabrication.
 
 ## 1. Quick Reproduction Commands

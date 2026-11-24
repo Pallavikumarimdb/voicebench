@@ -1,7 +1,7 @@
 # P5-T1 B1: Voice Latency Anatomy Benchmark Report
 
-**Date:** 2026-11-24 11:36:07  
-**Git SHA:** `75d038e0`  
+**Date:** 2026-11-24 12:13:11  
+**Git SHA:** `10b369e8`  
 **Hardware Environment:** Intel64 Family 6 Model 186 Stepping 3, GenuineIntel (10 physical / 12 logical cores, 31.7 GB RAM, OS: Windows-11-10.0.26300-SP0)  
 **Sample Size:** 225 turns evaluated (25 warmup discarded, n = 250)  
 

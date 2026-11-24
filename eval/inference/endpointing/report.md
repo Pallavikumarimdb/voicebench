@@ -1,7 +1,7 @@
 # P5-T2 B2: VAD Endpointing Sweep & Pareto Frontier Report
 
-**Date:** 2026-11-24 11:42:41  
-**Git SHA:** `bc1452d5`  
+**Date:** 2026-11-24 12:13:15  
+**Git SHA:** `10b369e8`  
 **Dataset:** 300 synthetic utterances with controlled pauses  
 **Methodological Note:** Synthetic mid-utterance pauses model controlled silence intervals. Real human caller hesitation in Japanese collections may exhibit higher acoustic variance and breathing artifacts.  
 

@@ -1,7 +1,7 @@
 # P5-T5 B5: Routing Ablation Benchmark Report
 
-**Date:** 2026-11-24 11:52:39  
-**Git SHA:** `b9331f37`  
+**Date:** 2026-11-24 12:13:21  
+**Git SHA:** `10b369e8`  
 **Hardware Environment:** Intel64 Family 6 Model 186 Stepping 3, GenuineIntel (10 physical / 12 logical cores, 31.7 GB RAM, OS: Windows-11-10.0.26300-SP0)  
 **Workload:** 10 Persona Suite x 10 Calls = 100 Calls (500 Turns) per Configuration  
 

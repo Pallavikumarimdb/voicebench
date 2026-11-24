@@ -7,9 +7,9 @@
     "cores_logical": 12,
     "ram_gb": 31.7,
     "python": "3.13.8",
-    "git_sha": "53b0eaac",
+    "git_sha": "10b369e8",
     "seed": 42,
-    "timestamp": "2026-11-24 11:50:42"
+    "timestamp": "2026-11-24 12:13:17"
   },
   "workload_profile": {
     "cached_prefix_tokens": 1200,

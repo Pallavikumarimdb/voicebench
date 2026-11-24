@@ -1,7 +1,7 @@
 # P5-T3 B3: ASR Engines Benchmark Report
 
-**Date:** 2026-11-24 11:48:49  
-**Git SHA:** `6a47ec21`  
+**Date:** 2026-11-24 12:13:16  
+**Git SHA:** `10b369e8`  
 **Hardware Environment:** Intel64 Family 6 Model 186 Stepping 3, GenuineIntel (10 physical / 12 logical cores, 31.7 GB RAM, OS: Windows-11-10.0.26300-SP0)  
 
 ## 1. Executive Summary

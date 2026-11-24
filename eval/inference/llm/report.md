@@ -1,7 +1,7 @@
 # P5-T4 B4: LLM Backends on Voice Workload & Pod Capacity Report
 
-**Date:** 2026-11-24 11:50:42  
-**Git SHA:** `53b0eaac`  
+**Date:** 2026-11-24 12:13:17  
+**Git SHA:** `10b369e8`  
 **Hardware Environment:** Intel64 Family 6 Model 186 Stepping 3, GenuineIntel (10 physical / 12 logical cores, 31.7 GB RAM, OS: Windows-11-10.0.26300-SP0)  
 **Workload Profile:** 1,200 cached prefix tokens (legal policy + context), 20–60 output tokens  
 

@@ -7,8 +7,8 @@
     "cores_logical": 12,
     "ram_gb": 31.7,
     "python": "3.13.8",
-    "git_sha": "6a47ec21",
-    "timestamp": "2026-11-24 11:48:49"
+    "git_sha": "10b369e8",
+    "timestamp": "2026-11-24 12:13:16"
   },
   "results": [
     {
