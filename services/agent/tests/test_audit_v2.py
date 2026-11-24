@@ -13,15 +13,26 @@ import json
 import pytest
 import tempfile
 import shutil
-from services.agent.app.audit import (
-    AuditLogger,
-    PolicyChangeLogger,
-    verify_audit_file,
-    verify_policy_log,
-    generate_ed25519_keypair,
-    compute_hash,
-    AuditVerificationResult
-)
+try:
+    from app.audit import (
+        AuditLogger,
+        PolicyChangeLogger,
+        verify_audit_file,
+        verify_policy_log,
+        generate_ed25519_keypair,
+        compute_hash,
+        AuditVerificationResult
+    )
+except ImportError:
+    from services.agent.app.audit import (
+        AuditLogger,
+        PolicyChangeLogger,
+        verify_audit_file,
+        verify_policy_log,
+        generate_ed25519_keypair,
+        compute_hash,
+        AuditVerificationResult
+    )
 
 
 @pytest.fixture
